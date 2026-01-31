@@ -595,8 +595,8 @@
             
             #sidebar {
                 width: 100%;
-                height: 40vh;
-                max-height: 40vh;
+                height: 55vh;
+                max-height: 55vh;
                 border-right: none;
                 border-bottom: 2px solid #ddd;
                 overflow-y: auto;
@@ -604,7 +604,17 @@
             
             #mapArea {
                 width: 100%;
-                height: 60vh;
+                height: 45vh;
+            }
+            
+            /* サイドバー内のセクション調整 */
+            .filter-section {
+                margin-bottom: 12px;
+            }
+            
+            .checkbox-group label {
+                padding: 6px;
+                font-size: 12px;
             }
             
             #map {
@@ -846,8 +856,12 @@
                 <input type="datetime-local" id="visitDate">
             </div>
             <div class="form-field">
-                <label>担当者</label>
+                <label>訪問者（自分）</label>
                 <input type="text" id="visitStaff" readonly>
+            </div>
+            <div class="form-field">
+                <label>相手先担当者</label>
+                <input type="text" id="contactPerson" placeholder="例: 山田太郎">
             </div>
             <div class="form-field">
                 <label>訪問メモ</label>
@@ -9630,6 +9644,7 @@
             const dateStr = now.toISOString().slice(0, 16);
             document.getElementById('visitDate').value = dateStr;
             document.getElementById('visitStaff').value = currentUser.email;
+            document.getElementById('contactPerson').value = '';
             document.getElementById('visitMemo').value = '';
             
             await loadVisitHistory(locationId);
@@ -9660,6 +9675,7 @@
                         <span>📅 ${dateStr}</span>
                         <span>👤 ${visit.staff}</span>
                     </div>
+                    ${visit.contactPerson ? `<div style="font-size:13px;color:#666;margin:5px 0;padding-left:5px;">🤝 相手先: ${visit.contactPerson}</div>` : ''}
                     <div class="visit-item-body">${visit.memo || '（メモなし）'}</div>
                 `;
                 historyDiv.appendChild(div);
@@ -9670,11 +9686,13 @@
         async function saveVisit() {
             const date = new Date(document.getElementById('visitDate').value);
             const staff = document.getElementById('visitStaff').value;
+            const contactPerson = document.getElementById('contactPerson').value;
             const memo = document.getElementById('visitMemo').value;
             
             await db.collection('locations').doc(currentLocationId).collection('visits').add({
                 date: date,
                 staff: staff,
+                contactPerson: contactPerson,
                 memo: memo,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
