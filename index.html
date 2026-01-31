@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>機関先マップ - クラウド版訪問管理システム</title>
+    <title>機関先マップ v4.1 - 訪問管理システム</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -160,7 +160,7 @@
             padding: 20px;
             border-bottom: 1px solid #e0e0e0;
             overflow-y: auto;
-            flex: 1;
+            max-height: 50vh;
         }
         
         .filter-group {
@@ -245,7 +245,40 @@
             background: #e8eaf6;
             color: #3f51b5;
             font-weight: 600;
-            border-top: 1px solid #e0e0e0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        /* 機関先リスト（新機能） */
+        .location-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: white;
+        }
+        
+        .location-item {
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .location-item:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+        }
+        
+        .location-item-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .location-item-info {
+            font-size: 12px;
+            color: #666;
         }
         
         /* 地図エリア */
@@ -453,7 +486,7 @@
     <div id="loginScreen">
         <div class="login-box">
             <h1>🗺️ 機関先マップ</h1>
-            <p>訪問管理システム v4.0</p>
+            <p>訪問管理システム v4.1</p>
             <div class="form-group">
                 <label>メールアドレス</label>
                 <input type="email" id="loginEmail" placeholder="example@email.com">
@@ -475,7 +508,7 @@
         <!-- サイドバー -->
         <div id="sidebar">
             <div class="header">
-                <h1>🗺️ 機関先マップ</h1>
+                <h1>🗺️ 機関先マップ v4.1</h1>
                 <div class="user-info">
                     <span id="currentUser"></span>
                     <button class="btn-logout" onclick="logout()">ログアウト</button>
@@ -503,6 +536,10 @@
                 <div class="filter-group">
                     <label>🏢 機関先種別</label>
                     <div class="checkbox-group" id="typeFilter"></div>
+                    <div class="checkbox-actions">
+                        <button class="btn-small" onclick="selectAllTypes()">すべて選択</button>
+                        <button class="btn-small" onclick="deselectAllTypes()">すべて解除</button>
+                    </div>
                 </div>
                 
                 <!-- 訪問状況フィルター -->
@@ -527,6 +564,9 @@
             </div>
             
             <div class="result-count" id="resultCount">表示中: 0 件</div>
+            
+            <!-- 機関先リスト（新機能） -->
+            <div class="location-list" id="locationList"></div>
         </div>
         
         <!-- 地図エリア -->
@@ -649,14 +689,14 @@
     <script>
         // Firebase設定
         const firebaseConfig = {
-    apiKey: "AIzaSyCkd8VWYhTLgu5YorItmWD-Is0T-wWR9Ps",
-    authDomain: "homon-23cca.firebaseapp.com",
-    projectId: "homon-23cca",
-    storageBucket: "homon-23cca.firebasestorage.app",
-    messagingSenderId: "109498050046",
-    appId: "1:109498050046:web:6ea39a023475dec4b28caf",
-    measurementId: "G-DW4NPRYMK1"
-};
+            apiKey: "AIzaSyCkd8VWYhTLgu5YorItmWD-Is0T-wWR9Ps",
+            authDomain: "homon-23cca.firebaseapp.com",
+            projectId: "homon-23cca",
+            storageBucket: "homon-23cca.firebasestorage.app",
+            messagingSenderId: "109498050046",
+            appId: "1:109498050046:web:6ea39a023475dec4b28caf",
+            measurementId: "G-DW4NPRYMK1"
+        };
         
         // Firebase初期化
         firebase.initializeApp(firebaseConfig);
@@ -667,6 +707,7 @@
         let map;
         let markersLayer;
         let allLocations = [];
+        let filteredLocations = []; // フィルター後のデータ
         let currentUser = null;
         let currentLocationId = null;
         
@@ -8988,19 +9029,11 @@
         
         // アプリ初期化
         async function initializeApp() {
-            // 初期データをFirestoreにインポート（初回のみ）
             await importInitialData();
-            
-            // Firestoreからデータを読み込み
             await loadLocations();
-            
-            // 地図を初期化
             initMap();
-            
-            // フィルターを初期化
             initFilters();
             
-            // イベントリスナーを設定
             document.getElementById('searchBox').addEventListener('input', applyFilters);
             document.getElementById('visitStatusFilter').addEventListener('change', applyFilters);
         }
@@ -9083,19 +9116,11 @@
         
         // フィルターを適用
         async function applyFilters() {
-            // 選択された市区町村
             const selectedCities = Array.from(document.querySelectorAll('#cityFilter input:checked')).map(cb => cb.value);
-            
-            // 選択された機関先種別
             const selectedTypes = Array.from(document.querySelectorAll('#typeFilter input:checked')).map(cb => cb.value);
-            
-            // 訪問状況
             const visitStatus = document.getElementById('visitStatusFilter').value;
-            
-            // 検索キーワード
             const searchKeyword = document.getElementById('searchBox').value.toLowerCase();
             
-            // フィルタリング
             let filtered = allLocations.filter((loc) => {
                 if (!selectedCities.includes(loc.city)) return false;
                 if (!selectedTypes.includes(loc.type)) return false;
@@ -9103,7 +9128,6 @@
                 return true;
             });
             
-            // 訪問状況でフィルタ（訪問記録を取得）
             const filteredWithVisits = await Promise.all(filtered.map(async (loc) => {
                 const visitsSnapshot = await db.collection('locations').doc(loc.id).collection('visits').orderBy('date', 'desc').limit(1).get();
                 let lastVisitDate = null;
@@ -9113,7 +9137,6 @@
                 return { ...loc, lastVisitDate };
             }));
             
-            // 訪問状況でフィルタ
             const now = new Date();
             const filtered2 = filteredWithVisits.filter((loc) => {
                 if (visitStatus === 'all') return true;
@@ -9129,10 +9152,11 @@
                 return false;
             });
             
-            // 地図を更新
-            updateMap(filtered2);
+            filteredLocations = filtered2;
             
-            // 表示件数を更新
+            updateMap(filtered2);
+            updateLocationList(filtered2); // リスト更新（新機能）
+            
             document.getElementById('resultCount').textContent = `表示中: ${filtered2.length} 件`;
         }
         
@@ -9143,8 +9167,7 @@
             locations.forEach((loc) => {
                 if (!loc.lat || !loc.lng) return;
                 
-                // マーカーの色を決定
-                let color = '#9b59b6'; // 未訪問
+                let color = '#9b59b6';
                 if (loc.lastVisitDate) {
                     const daysDiff = Math.floor((new Date() - loc.lastVisitDate) / (1000 * 60 * 60 * 24));
                     if (daysDiff <= 15) color = '#27ae60';
@@ -9170,12 +9193,40 @@
                     </div>
                     <div class="popup-actions">
                         <button class="btn btn-primary" onclick="showVisitModal('${loc.id}')">訪問記録</button>
-                        <button class="btn btn-secondary" onclick="showLocationDetails('${loc.id}')">詳細</button>
                     </div>
                 `;
                 
                 marker.bindPopup(popupContent);
                 markersLayer.addLayer(marker);
+            });
+        }
+        
+        // 機関先リストを更新（新機能）
+        function updateLocationList(locations) {
+            const listDiv = document.getElementById('locationList');
+            listDiv.innerHTML = '';
+            
+            if (locations.length === 0) {
+                listDiv.innerHTML = '<div class="loading">該当する機関先がありません</div>';
+                return;
+            }
+            
+            locations.forEach((loc) => {
+                const div = document.createElement('div');
+                div.className = 'location-item';
+                div.onclick = () => {
+                    if (loc.lat && loc.lng) {
+                        map.setView([loc.lat, loc.lng], 15);
+                    }
+                };
+                
+                div.innerHTML = `
+                    <div class="location-item-name">${loc.name}</div>
+                    <div class="location-item-info">
+                        📍 ${loc.city} | 🏢 ${loc.type}
+                    </div>
+                `;
+                listDiv.appendChild(div);
             });
         }
         
@@ -9190,18 +9241,12 @@
                 🏢 ${loc.type}
             `;
             
-            // 現在日時を設定
             const now = new Date();
             const dateStr = now.toISOString().slice(0, 16);
             document.getElementById('visitDate').value = dateStr;
-            
-            // 担当者を設定
             document.getElementById('visitStaff').value = currentUser.email;
-            
-            // メモをクリア
             document.getElementById('visitMemo').value = '';
             
-            // 訪問履歴を表示
             await loadVisitHistory(locationId);
             
             document.getElementById('visitModal').style.display = 'flex';
@@ -9292,40 +9337,54 @@
             alert('機関先を追加しました！');
             closeModal('addLocationModal');
             
-            // データを再読み込み
             await loadLocations();
             initFilters();
             applyFilters();
         }
         
-        // データをエクスポート
+        // データをエクスポート（訪問履歴を含む強化版）
         async function exportData() {
             const data = [];
             
+            // 進捗表示
+            const originalText = event.target.textContent;
+            event.target.textContent = 'エクスポート中...';
+            event.target.disabled = true;
+            
             for (const loc of allLocations) {
+                // 訪問履歴を全件取得
                 const visitsSnapshot = await db.collection('locations').doc(loc.id).collection('visits').orderBy('date', 'desc').get();
-                const visits = [];
-                visitsSnapshot.forEach((doc) => {
-                    const v = doc.data();
-                    visits.push({
-                        date: v.date.toDate().toLocaleString('ja-JP'),
-                        staff: v.staff,
-                        memo: v.memo
-                    });
-                });
                 
-                data.push({
-                    機関先名: loc.name,
-                    住所: loc.address,
-                    市区: loc.city,
-                    種別: loc.type,
-                    緯度: loc.lat,
-                    経度: loc.lng,
-                    訪問回数: visits.length,
-                    最終訪問日: visits.length > 0 ? visits[0].date : '未訪問',
-                    最終訪問者: visits.length > 0 ? visits[0].staff : '',
-                    最新メモ: visits.length > 0 ? visits[0].memo : ''
-                });
+                if (visitsSnapshot.empty) {
+                    // 訪問履歴がない場合も1行出力
+                    data.push({
+                        機関先名: loc.name,
+                        住所: loc.address,
+                        市区: loc.city,
+                        種別: loc.type,
+                        緯度: loc.lat,
+                        経度: loc.lng,
+                        訪問日時: '',
+                        担当者: '',
+                        訪問メモ: ''
+                    });
+                } else {
+                    // 訪問履歴がある場合は各訪問を1行ずつ出力
+                    visitsSnapshot.forEach((doc) => {
+                        const v = doc.data();
+                        data.push({
+                            機関先名: loc.name,
+                            住所: loc.address,
+                            市区: loc.city,
+                            種別: loc.type,
+                            緯度: loc.lat,
+                            経度: loc.lng,
+                            訪問日時: v.date.toDate().toLocaleString('ja-JP'),
+                            担当者: v.staff,
+                            訪問メモ: v.memo || ''
+                        });
+                    });
+                }
             }
             
             // CSVに変換
@@ -9339,8 +9398,14 @@
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `機関先データ_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.download = `機関先データ_訪問履歴含む_${new Date().toISOString().slice(0, 10)}.csv`;
             link.click();
+            
+            // ボタンを元に戻す
+            event.target.textContent = originalText;
+            event.target.disabled = false;
+            
+            alert(`エクスポート完了！\n総データ数: ${data.length}行`);
         }
         
         // モーダルを閉じる
@@ -9348,21 +9413,26 @@
             document.getElementById(modalId).style.display = 'none';
         }
         
-        // すべての市区町村を選択
+        // 市区町村の一括選択
         function selectAllCities() {
             document.querySelectorAll('#cityFilter input').forEach(cb => cb.checked = true);
             applyFilters();
         }
         
-        // すべての市区町村を解除
         function deselectAllCities() {
             document.querySelectorAll('#cityFilter input').forEach(cb => cb.checked = false);
             applyFilters();
         }
         
-        // 機関先詳細を表示（未実装）
-        function showLocationDetails(locationId) {
-            alert('詳細機能は今後実装予定です');
+        // 機関先種別の一括選択（新機能）
+        function selectAllTypes() {
+            document.querySelectorAll('#typeFilter input').forEach(cb => cb.checked = true);
+            applyFilters();
+        }
+        
+        function deselectAllTypes() {
+            document.querySelectorAll('#typeFilter input').forEach(cb => cb.checked = false);
+            applyFilters();
         }
     </script>
 </body>
