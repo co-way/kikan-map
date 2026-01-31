@@ -481,6 +481,112 @@
         }
 
         
+
+        .detail-section {
+            margin-bottom: 25px;
+        }
+        
+        .detail-section h3 {
+            font-size: 16px;
+            color: #667eea;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .detail-item {
+            display: flex;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            color: #555;
+            min-width: 120px;
+        }
+        
+        .detail-value {
+            color: #333;
+            flex: 1;
+        }
+        
+        .detail-value a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .detail-value a:hover {
+            text-decoration: underline;
+        }
+
+        .visit-stat {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        
+        .visit-stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .visit-stat-label {
+            color: #666;
+        }
+        
+        .visit-stat-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-action {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        
+        .btn-action:hover {
+            opacity: 0.8;
+        }
+        
+        .btn-edit {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .btn-visit {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+        
+
         /* レスポンシブ対応 */
         @media (max-width: 768px) {
             #app {
@@ -506,7 +612,9 @@
             }
             
             .location-list {
-                max-height: 120px;
+                display: block;
+                max-height: 150px;
+                flex: 0 0 auto;
             }
             
             .modal-content {
@@ -650,6 +758,81 @@
         </div>
     </div>
     
+
+    <!-- 詳細モーダル -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="detailTitle">機関先詳細</h2>
+                <button class="btn-close" onclick="closeDetailModal()">&times;</button>
+            </div>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <!-- 編集モーダル -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>機関先情報の編集</h2>
+                <button class="btn-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="editForm">
+                <div class="form-field">
+                    <label>機関名 *</label>
+                    <input type="text" id="edit_name" required>
+                </div>
+                <div class="form-field">
+                    <label>住所 *</label>
+                    <input type="text" id="edit_address" required>
+                </div>
+                <div class="form-field">
+                    <label>市区 *</label>
+                    <input type="text" id="edit_city" required>
+                </div>
+                <div class="form-field">
+                    <label>種別 *</label>
+                    <select id="edit_type" required>
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>電話番号</label>
+                    <input type="tel" id="edit_phone" placeholder="例: 075-123-4567">
+                </div>
+                <div class="form-field">
+                    <label>FAX番号</label>
+                    <input type="tel" id="edit_fax" placeholder="例: 075-123-4568">
+                </div>
+                <div class="form-field">
+                    <label>担当者名</label>
+                    <input type="text" id="edit_contact" placeholder="例: 山田太郎">
+                </div>
+                <div class="form-field">
+                    <label>メールアドレス</label>
+                    <input type="email" id="edit_email" placeholder="例: contact@example.com">
+                </div>
+                <div class="form-field">
+                    <label>営業時間</label>
+                    <input type="text" id="edit_businessHours" placeholder="例: 9:00-17:00">
+                </div>
+                <div class="form-field">
+                    <label>緯度</label>
+                    <input type="number" step="any" id="edit_lat">
+                </div>
+                <div class="form-field">
+                    <label>経度</label>
+                    <input type="number" step="any" id="edit_lng">
+                </div>
+                <div class="form-field">
+                    <label>メモ</label>
+                    <textarea id="edit_notes" placeholder="自由記述"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:10px;">💾 保存</button>
+            </form>
+        </div>
+    </div>
+
     <!-- 訪問記録モーダル -->
     <div class="modal" id="visitModal">
         <div class="modal-content">
@@ -9282,6 +9465,157 @@
         }
         
         // 訪問記録モーダルを表示
+
+        // 詳細モーダルを表示
+        async function showDetail(locationId) {
+            const loc = allLocations.find(l => l.id === locationId);
+            if (!loc) return;
+            
+            currentLocationId = locationId;
+            
+            // 訪問統計を計算
+            let stats = {
+                totalVisits: loc.visits ? loc.visits.length : 0,
+                lastVisit: null,
+                avgInterval: 0
+            };
+            
+            if (loc.visits && loc.visits.length > 0) {
+                stats.lastVisit = new Date(loc.visits[0].timestamp.seconds * 1000).toLocaleDateString('ja-JP');
+                
+                if (loc.visits.length > 1) {
+                    let totalDays = 0;
+                    for (let i = 0; i < loc.visits.length - 1; i++) {
+                        const days = Math.floor((loc.visits[i].timestamp.seconds - loc.visits[i + 1].timestamp.seconds) / (60 * 60 * 24));
+                        totalDays += days;
+                    }
+                    stats.avgInterval = Math.round(totalDays / (loc.visits.length - 1));
+                }
+            }
+            
+            // 詳細情報HTML生成
+            let detailHTML = `
+                <div class="detail-section">
+                    <h3>📋 基本情報</h3>
+                    <div class="detail-item">
+                        <span class="detail-label">機関名:</span>
+                        <span class="detail-value">${loc.name}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">住所:</span>
+                        <span class="detail-value">${loc.address}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">市区:</span>
+                        <span class="detail-value">${loc.city}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">種別:</span>
+                        <span class="detail-value">${loc.type}</span>
+                    </div>
+                    ${loc.phone ? `
+                    <div class="detail-item">
+                        <span class="detail-label">電話番号:</span>
+                        <span class="detail-value">${loc.phone}</span>
+                    </div>` : ''}
+                    ${loc.fax ? `
+                    <div class="detail-item">
+                        <span class="detail-label">FAX:</span>
+                        <span class="detail-value">${loc.fax}</span>
+                    </div>` : ''}
+                    ${loc.contact ? `
+                    <div class="detail-item">
+                        <span class="detail-label">担当者:</span>
+                        <span class="detail-value">${loc.contact}</span>
+                    </div>` : ''}
+                    ${loc.email ? `
+                    <div class="detail-item">
+                        <span class="detail-label">メール:</span>
+                        <span class="detail-value">${loc.email}</span>
+                    </div>` : ''}
+                    ${loc.businessHours ? `
+                    <div class="detail-item">
+                        <span class="detail-label">営業時間:</span>
+                        <span class="detail-value">${loc.businessHours}</span>
+                    </div>` : ''}
+                    <div class="detail-item">
+                        <span class="detail-label">緯度・経度:</span>
+                        <span class="detail-value">${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}</span>
+                    </div>
+                    ${loc.notes ? `
+                    <div class="detail-item">
+                        <span class="detail-label">メモ:</span>
+                        <span class="detail-value">${loc.notes}</span>
+                    </div>` : ''}
+                </div>
+
+                <div class="detail-section">
+                    <h3>📊 訪問統計</h3>
+                    <div class="visit-stat">
+                        <div class="visit-stat-item">
+                            <span class="visit-stat-label">総訪問回数:</span>
+                            <span class="visit-stat-value">${stats.totalVisits}回</span>
+                        </div>
+                        ${stats.lastVisit ? `
+                        <div class="visit-stat-item">
+                            <span class="visit-stat-label">最終訪問日:</span>
+                            <span class="visit-stat-value">${stats.lastVisit}</span>
+                        </div>` : ''}
+                        ${stats.avgInterval > 0 ? `
+                        <div class="visit-stat-item">
+                            <span class="visit-stat-label">平均訪問間隔:</span>
+                            <span class="visit-stat-value">${stats.avgInterval}日</span>
+                        </div>` : ''}
+                    </div>
+                </div>
+
+                ${loc.visits && loc.visits.length > 0 ? `
+                <div class="detail-section">
+                    <h3>📅 訪問履歴</h3>
+                    ${loc.visits.map(visit => `
+                        <div class="visit-stat" style="margin-bottom:10px;">
+                            <div class="visit-stat-item">
+                                <span class="visit-stat-label">訪問日時:</span>
+                                <span class="visit-stat-value">${new Date(visit.timestamp.seconds * 1000).toLocaleString('ja-JP')}</span>
+                            </div>
+                            <div class="visit-stat-item">
+                                <span class="visit-stat-label">担当者:</span>
+                                <span class="visit-stat-value">${visit.staff || currentUser.email}</span>
+                            </div>
+                            ${visit.memo ? `
+                            <div style="margin-top:8px;padding-top:8px;border-top:1px solid #e9ecef;">
+                                <span style="color:#666;font-size:13px;">${visit.memo}</span>
+                            </div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>` : ''}
+
+                <div class="action-buttons">
+                    <button class="btn-action btn-edit" onclick="openEditModal('${locationId}')">✏️ 編集</button>
+                    <button class="btn-action btn-visit" onclick="closeDetailModal();openVisitModal('${locationId}')">📝 訪問記録</button>
+                    <button class="btn-action btn-delete" onclick="deleteLocation('${locationId}')">🗑️ 削除</button>
+                    <button class="btn-action btn-cancel" onclick="closeDetailModal()">閉じる</button>
+                </div>
+            `;
+            
+            document.getElementById('detailTitle').textContent = loc.name;
+            document.getElementById('detailContent').innerHTML = detailHTML;
+            document.getElementById('detailModal').style.display = 'block';
+        }
+        
+        function closeDetailModal() {
+            document.getElementById('detailModal').style.display = 'none';
+            currentLocationId = null;
+        }
+        
+        function openEditModal(locationId) {
+            alert('編集機能は次のバージョン（v4.3）で実装予定です');
+        }
+        
+        function deleteLocation(locationId) {
+            alert('削除機能は次のバージョン（v4.3）で実装予定です');
+        }
+
         async function openVisitModal(locationId) {
             currentLocationId = locationId;
             const loc = allLocations.find(l => l.id === locationId);
@@ -9485,6 +9819,103 @@
             document.querySelectorAll('#typeFilter input').forEach(cb => cb.checked = false);
             applyFilters();
         }
+
+
+        // ========== 詳細機能 ==========
+        
+        // 詳細モーダルを表示
+        // 編集モーダル
+        function openEditModal(locationId) {
+            currentLocationId = locationId;
+            const loc = allLocations.find(l => l.id === locationId);
+            if (!loc) return;
+            
+            document.getElementById('edit_name').value = loc.name;
+            document.getElementById('edit_address').value = loc.address;
+            document.getElementById('edit_city').value = loc.city;
+            document.getElementById('edit_type').value = loc.type;
+            document.getElementById('edit_phone').value = loc.phone || '';
+            document.getElementById('edit_fax').value = loc.fax || '';
+            document.getElementById('edit_contact').value = loc.contact || '';
+            document.getElementById('edit_email').value = loc.email || '';
+            document.getElementById('edit_businessHours').value = loc.businessHours || '';
+            document.getElementById('edit_lat').value = loc.lat;
+            document.getElementById('edit_lng').value = loc.lng;
+            document.getElementById('edit_notes').value = loc.notes || '';
+            
+            closeDetailModal();
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            currentLocationId = null;
+        }
+
+        // 編集フォーム送信
+        if (document.getElementById('editForm')) {
+            document.getElementById('editForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const updates = {
+                    name: document.getElementById('edit_name').value,
+                    address: document.getElementById('edit_address').value,
+                    city: document.getElementById('edit_city').value,
+                    type: document.getElementById('edit_type').value,
+                    phone: document.getElementById('edit_phone').value,
+                    fax: document.getElementById('edit_fax').value,
+                    contact: document.getElementById('edit_contact').value,
+                    email: document.getElementById('edit_email').value,
+                    businessHours: document.getElementById('edit_businessHours').value,
+                    lat: parseFloat(document.getElementById('edit_lat').value),
+                    lng: parseFloat(document.getElementById('edit_lng').value),
+                    notes: document.getElementById('edit_notes').value
+                };
+                
+                try {
+                    await db.collection('locations').doc(currentLocationId).update(updates);
+                    alert('✅ 更新しました');
+                    closeEditModal();
+                    await loadAllData();
+                } catch (error) {
+                    alert('エラー: ' + error.message);
+                }
+            });
+        }
+
+        // 削除
+        async function deleteLocation(locationId) {
+            if (!confirm('この機関先を削除しますか？\n訪問履歴も一緒に削除されます。')) return;
+            
+            try {
+                // 訪問履歴削除
+                const visitsSnapshot = await db.collection('locations').doc(locationId).collection('visits').get();
+                const batch = db.batch();
+                visitsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                
+                // 機関先削除
+                await db.collection('locations').doc(locationId).delete();
+                
+                alert('✅ 削除しました');
+                closeDetailModal();
+                await loadAllData();
+            } catch (error) {
+                alert('エラー: ' + error.message);
+            }
+        }
+
+        // 編集フォームの種別選択肢を初期化
+        function initEditTypeOptions() {
+            const types = [...new Set(allLocations.map(loc => loc.type))].sort();
+            const editTypeSelect = document.getElementById('edit_type');
+            if (editTypeSelect) {
+                editTypeSelect.innerHTML = '<option value="">選択してください</option>' +
+                    types.map(type => `<option value="${type}">${type}</option>`).join('');
+            }
+        }
+
+
     </script>
 </body>
 </html>
