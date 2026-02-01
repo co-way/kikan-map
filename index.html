@@ -9303,6 +9303,60 @@
             }
         });
         
+        // ログインボタンのイベントリスナーを即座に設定
+        console.log('[DEBUG] === ログインボタンのイベントリスナー設定開始 ===');
+        
+        function setupLoginButton() {
+            const loginBtn = document.getElementById('loginButton');
+            const registerLink = document.getElementById('registerLink');
+            const passwordInput = document.getElementById('loginPassword');
+            
+            if (loginBtn) {
+                console.log('[DEBUG] ✅ ログインボタンが見つかりました');
+                
+                loginBtn.addEventListener('click', function(e) {
+                    console.log('[DEBUG] 🖱️ ログインボタンがクリックされました');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    login();
+                });
+                
+                console.log('[DEBUG] ✅ ログインボタンのイベントリスナー設定完了');
+            } else {
+                console.error('[ERROR] ❌ ログインボタンが見つかりません');
+            }
+            
+            if (registerLink) {
+                console.log('[DEBUG] ✅ 新規登録リンクが見つかりました');
+                
+                registerLink.addEventListener('click', function(e) {
+                    console.log('[DEBUG] 🖱️ 新規登録リンクがクリックされました');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showRegister();
+                });
+                
+                console.log('[DEBUG] ✅ 新規登録リンクのイベントリスナー設定完了');
+            }
+            
+            if (passwordInput) {
+                passwordInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        console.log('[DEBUG] ⏎ Enter キーが押されました');
+                        e.preventDefault();
+                        login();
+                    }
+                });
+                console.log('[DEBUG] ✅ Enter キーログイン設定完了');
+            }
+        }
+        
+        // 即座に実行
+        setupLoginButton();
+        
+        // 念のため、100ms 後にも実行
+        setTimeout(setupLoginButton, 100);
+        
         // 認証状態の監視
         auth.onAuthStateChanged((user) => {
             if (user) {
@@ -9701,15 +9755,15 @@
                         ${loc.contactPersons && loc.contactPersons.length > 0 ? 
                             loc.contactPersons.map(person => \`
                                 <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:#f8f9fa;border-radius:4px;margin-bottom:5px;">
-                                    <span>👤 \${person}</span>
-                                    <button onclick="removeContactPerson('\${locationId}', '\${person}')" style="padding:4px 8px;background:#dc3545;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;">削除</button>
+                                    <span>👤 ${person}</span>
+                                    <button onclick="removeContactPerson('${locationId}', '${person}')" style="padding:4px 8px;background:#dc3545;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;">削除</button>
                                 </div>
                             \`).join('') 
                             : '<div style="color:#999;font-size:13px;">登録担当者なし</div>'}
                     </div>
                     <div style="display:flex;gap:8px;">
                         <input type="text" id="newContactPersonInput" placeholder="担当者名を入力" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
-                        <button onclick="addContactPerson('\${locationId}')" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">追加</button>
+                        <button onclick="addContactPerson('${locationId}')" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">追加</button>
                     </div>
                 </div>
 
