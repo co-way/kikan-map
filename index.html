@@ -954,6 +954,10 @@
         // Firebase初期化
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
+        
+        console.log('[DEBUG] Firebase 初期化直後のチェック');
+        console.log('[DEBUG] Firebase:', typeof firebase !== 'undefined' ? '✅ 読み込み済み' : '❌ 未読み込み');
+        console.log('[DEBUG] Auth:', auth ? '✅ 初期化済み' : '❌ 未初期化');
         const db = firebase.firestore();
         
         // グローバル変数
@@ -9231,7 +9235,9 @@
 ];
         
         // ページ読み込み完了時の初期化
-        window.addEventListener('load', function() {
+        // DOMContentLoaded を使用（より早く実行）
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[DEBUG] DOMContentLoaded イベント発火');
             console.log('[DEBUG] ページ読み込み完了');
             
             // Firebase の初期化確認
