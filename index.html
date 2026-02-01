@@ -931,9 +931,9 @@
     </div>
 
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     
     <!-- Leaflet -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -9230,14 +9230,55 @@
   }
 ];
         
-        // ログインボタンのイベントリスナーを追加（念のため）
-        document.addEventListener('DOMContentLoaded', function() {
+        // ページ読み込み完了時の初期化
+        window.addEventListener('load', function() {
+            console.log('[DEBUG] ページ読み込み完了');
+            
+            // Firebase の初期化確認
+            if (typeof firebase !== 'undefined') {
+                console.log('[DEBUG] Firebase SDK 読み込み成功');
+            } else {
+                console.error('[ERROR] Firebase SDK が読み込まれていません');
+                alert('エラー: Firebase が読み込まれていません。インターネット接続を確認してください。');
+                return;
+            }
+            
+            // Auth の初期化確認
+            if (auth) {
+                console.log('[DEBUG] Firebase Auth 初期化成功');
+            } else {
+                console.error('[ERROR] Firebase Auth が初期化されていません');
+            }
+            
+            // ログインボタンのイベントリスナー設定
             const loginBtn = document.querySelector('.btn-login');
             if (loginBtn) {
-                console.log('ログインボタンのイベントリスナー設定完了');
+                console.log('[DEBUG] ログインボタンが見つかりました');
+                
+                // onclick 属性を削除して、addEventListener だけを使用
+                loginBtn.removeAttribute('onclick');
+                
                 loginBtn.addEventListener('click', function(e) {
+                    console.log('[DEBUG] ログインボタンがクリックされました');
                     e.preventDefault();
+                    e.stopPropagation();
                     login();
+                });
+                
+                console.log('[DEBUG] ログインボタンのイベントリスナー設定完了');
+            } else {
+                console.error('[ERROR] ログインボタンが見つかりません');
+            }
+            
+            // Enterキーでログイン
+            const passwordInput = document.getElementById('loginPassword');
+            if (passwordInput) {
+                passwordInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        console.log('[DEBUG] Enter キーが押されました');
+                        e.preventDefault();
+                        login();
+                    }
                 });
             }
         });
@@ -9258,11 +9299,23 @@
         
         // ログイン
         async function login() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
+            console.log('[DEBUG] login() 関数が呼ばれました');
+            
+            const emailInput = document.getElementById('loginEmail');
+            const passwordInput = document.getElementById('loginPassword');
             const errorDiv = document.getElementById('loginError');
             
-            console.log('ログイン開始:', email); // デバッグ用
+            if (!emailInput || !passwordInput) {
+                console.error('[ERROR] 入力フィールドが見つかりません');
+                alert('エラー: 入力フィールドが見つかりません。ページを再読み込みしてください。');
+                return;
+            }
+            
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            
+            console.log('[DEBUG] メール:', email);
+            console.log('[DEBUG] パスワード:', password ? '入力あり' : '入力なし');
             
             if (!email || !password) {
                 errorDiv.textContent = 'メールアドレスとパスワードを入力してください';
@@ -9270,15 +9323,44 @@
                 return;
             }
             
+            if (!auth) {
+                console.error('[ERROR] Firebase Auth が初期化されていません');
+                alert('エラー: Firebase が初期化されていません。ページを再読み込みしてください。');
+                return;
+            }
+            
             try {
-                console.log('Firebase認証開始...'); // デバッグ用
+                console.log('[DEBUG] Firebase 認証開始...');
+                errorDiv.textContent = 'ログイン中...';
+                errorDiv.style.display = 'block';
+                errorDiv.style.color = '#667eea';
+                
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                console.log('ログイン成功:', userCredential.user.email); // デバッグ用
+                console.log('[DEBUG] ログイン成功:', userCredential.user.email);
+                
                 errorDiv.style.display = 'none';
             } catch (error) {
-                console.error('ログインエラー:', error); // デバッグ用
-                errorDiv.textContent = 'ログインに失敗しました: ' + error.message;
+                console.error('[ERROR] ログインエラー:', error);
+                console.error('[ERROR] エラーコード:', error.code);
+                console.error('[ERROR] エラーメッセージ:', error.message);
+                
+                let errorMessage = 'ログインに失敗しました。';
+                
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = 'このメールアドレスは登録されていません。';
+                } else if (error.code === 'auth/wrong-password') {
+                    errorMessage = 'パスワードが正しくありません。';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'メールアドレスの形式が正しくありません。';
+                } else if (error.code === 'auth/network-request-failed') {
+                    errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+                } else {
+                    errorMessage = 'ログインに失敗しました: ' + error.message;
+                }
+                
+                errorDiv.textContent = errorMessage;
                 errorDiv.style.display = 'block';
+                errorDiv.style.color = '#e74c3c';
             }
         }
         
