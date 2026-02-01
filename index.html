@@ -861,7 +861,13 @@
             </div>
             <div class="form-field">
                 <label>相手先担当者</label>
-                <input type="text" id="contactPerson" placeholder="例: 山田太郎">
+                <select id="contactPersonSelect" onchange="handleContactPersonChange()">
+                    <option value="">選択してください</option>
+                </select>
+            </div>
+            <div class="form-field" id="newContactPersonField" style="display:none;">
+                <label>新しい担当者名</label>
+                <input type="text" id="newContactPerson" placeholder="例: 山田太郎">
             </div>
             <div class="form-field">
                 <label>訪問メモ</label>
@@ -9564,6 +9570,24 @@
                 </div>
 
                 <div class="detail-section">
+                    <h3>👥 登録担当者</h3>
+                    <div id="contactPersonsList" style="margin-bottom:15px;">
+                        ${loc.contactPersons && loc.contactPersons.length > 0 ? 
+                            loc.contactPersons.map(person => `
+                                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:#f8f9fa;border-radius:4px;margin-bottom:5px;">
+                                    <span>👤 ${person}</span>
+                                    <button onclick="removeContactPerson('${locationId}', '${person}')" style="padding:4px 8px;background:#dc3545;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;">削除</button>
+                                </div>
+                            `).join('') 
+                            : '<div style="color:#999;font-size:13px;">登録担当者なし</div>'}
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="newContactPersonInput" placeholder="担当者名を入力" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
+                        <button onclick="addContactPerson('${locationId}')" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">追加</button>
+                    </div>
+                </div>
+
+                <div class="detail-section">
                     <h3>📊 訪問統計</h3>
                     <div class="visit-stat">
                         <div class="visit-stat-item">
@@ -9617,6 +9641,67 @@
             document.getElementById('detailModal').style.display = 'block';
         }
         
+
+        // 担当者管理関数
+        async function addContactPerson(locationId) {
+            const input = document.getElementById('newContactPersonInput');
+            const personName = input.value.trim();
+            
+            if (!personName) {
+                alert('担当者名を入力してください');
+                return;
+            }
+            
+            const loc = allLocations.find(l => l.id === locationId);
+            const contactPersons = loc.contactPersons || [];
+            
+            if (contactPersons.includes(personName)) {
+                alert('この担当者は既に登録されています');
+                return;
+            }
+            
+            contactPersons.push(personName);
+            
+            await db.collection('locations').doc(locationId).update({
+                contactPersons: contactPersons
+            });
+            
+            input.value = '';
+            alert('担当者を追加しました');
+            
+            // 詳細モーダルを再表示
+            await loadLocations();
+            showDetail(locationId);
+        }
+        
+        async function removeContactPerson(locationId, personName) {
+            if (!confirm(`${personName} を削除しますか？`)) return;
+            
+            const loc = allLocations.find(l => l.id === locationId);
+            const contactPersons = (loc.contactPersons || []).filter(p => p !== personName);
+            
+            await db.collection('locations').doc(locationId).update({
+                contactPersons: contactPersons
+            });
+            
+            alert('担当者を削除しました');
+            
+            // 詳細モーダルを再表示
+            await loadLocations();
+            showDetail(locationId);
+        }
+        
+        function handleContactPersonChange() {
+            const select = document.getElementById('contactPersonSelect');
+            const newField = document.getElementById('newContactPersonField');
+            
+            if (select.value === '__new__') {
+                newField.style.display = 'block';
+            } else {
+                newField.style.display = 'none';
+            }
+        }
+        
         function closeDetailModal() {
             document.getElementById('detailModal').style.display = 'none';
             currentLocationId = null;
@@ -9644,8 +9729,28 @@
             const dateStr = now.toISOString().slice(0, 16);
             document.getElementById('visitDate').value = dateStr;
             document.getElementById('visitStaff').value = currentUser.email;
-            document.getElementById('contactPerson').value = '';
             document.getElementById('visitMemo').value = '';
+            
+            // 担当者リストを読み込む
+            const select = document.getElementById('contactPersonSelect');
+            select.innerHTML = '<option value="">選択してください</option>';
+            
+            if (loc.contactPersons && loc.contactPersons.length > 0) {
+                loc.contactPersons.forEach(person => {
+                    const option = document.createElement('option');
+                    option.value = person;
+                    option.textContent = person;
+                    select.appendChild(option);
+                });
+            }
+            
+            // 「新規担当者」オプションを追加
+            const newOption = document.createElement('option');
+            newOption.value = '__new__';
+            newOption.textContent = '➕ 新規担当者を入力';
+            select.appendChild(newOption);
+            
+            document.getElementById('newContactPersonField').style.display = 'none';
             
             await loadVisitHistory(locationId);
             
@@ -9686,7 +9791,17 @@
         async function saveVisit() {
             const date = new Date(document.getElementById('visitDate').value);
             const staff = document.getElementById('visitStaff').value;
-            const contactPerson = document.getElementById('contactPerson').value;
+            
+            // 担当者を取得
+            const select = document.getElementById('contactPersonSelect');
+            let contactPerson = '';
+            
+            if (select.value === '__new__') {
+                contactPerson = document.getElementById('newContactPerson').value.trim();
+            } else {
+                contactPerson = select.value;
+            }
+            
             const memo = document.getElementById('visitMemo').value;
             
             await db.collection('locations').doc(currentLocationId).collection('visits').add({
