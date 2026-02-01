@@ -9573,17 +9573,17 @@
                     <h3>👥 登録担当者</h3>
                     <div id="contactPersonsList" style="margin-bottom:15px;">
                         ${loc.contactPersons && loc.contactPersons.length > 0 ? 
-                            loc.contactPersons.map(person => `
+                            loc.contactPersons.map(person => \`
                                 <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:#f8f9fa;border-radius:4px;margin-bottom:5px;">
-                                    <span>👤 ${person}</span>
-                                    <button onclick="removeContactPerson('${locationId}', '${person}')" style="padding:4px 8px;background:#dc3545;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;">削除</button>
+                                    <span>👤 \${person}</span>
+                                    <button onclick="removeContactPerson('\${locationId}', '\${person}')" style="padding:4px 8px;background:#dc3545;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;">削除</button>
                                 </div>
-                            `).join('') 
+                            \`).join('') 
                             : '<div style="color:#999;font-size:13px;">登録担当者なし</div>'}
                     </div>
                     <div style="display:flex;gap:8px;">
                         <input type="text" id="newContactPersonInput" placeholder="担当者名を入力" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
-                        <button onclick="addContactPerson('${locationId}')" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">追加</button>
+                        <button onclick="addContactPerson('\${locationId}')" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">追加</button>
                     </div>
                 </div>
 
@@ -9819,7 +9819,7 @@
             const memo = document.getElementById('visitMemo').value;
             
             await db.collection('locations').doc(currentLocationId).collection('visits').add({
-                date: date,
+                timestamp: firebase.firestore.Timestamp.fromDate(date),
                 staff: staff,
                 contactPerson: contactPerson,
                 memo: memo,
