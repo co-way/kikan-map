@@ -9230,6 +9230,18 @@
   }
 ];
         
+        // ログインボタンのイベントリスナーを追加（念のため）
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginBtn = document.querySelector('.btn-login');
+            if (loginBtn) {
+                console.log('ログインボタンのイベントリスナー設定完了');
+                loginBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    login();
+                });
+            }
+        });
+        
         // 認証状態の監視
         auth.onAuthStateChanged((user) => {
             if (user) {
@@ -9250,9 +9262,21 @@
             const password = document.getElementById('loginPassword').value;
             const errorDiv = document.getElementById('loginError');
             
+            console.log('ログイン開始:', email); // デバッグ用
+            
+            if (!email || !password) {
+                errorDiv.textContent = 'メールアドレスとパスワードを入力してください';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
             try {
-                await auth.signInWithEmailAndPassword(email, password);
+                console.log('Firebase認証開始...'); // デバッグ用
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                console.log('ログイン成功:', userCredential.user.email); // デバッグ用
+                errorDiv.style.display = 'none';
             } catch (error) {
+                console.error('ログインエラー:', error); // デバッグ用
                 errorDiv.textContent = 'ログインに失敗しました: ' + error.message;
                 errorDiv.style.display = 'block';
             }
