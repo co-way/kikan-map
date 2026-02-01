@@ -663,10 +663,10 @@
                 <label>パスワード</label>
                 <input type="password" id="loginPassword" placeholder="パスワード">
             </div>
-            <button class="btn-login" onclick="login()">ログイン</button>
+            <button class="btn-login" id="loginButton">ログイン</button>
             <div class="error-message" id="loginError"></div>
             <div class="register-link">
-                アカウントがない場合は、<a href="#" onclick="showRegister(); return false;">新規登録</a>
+                アカウントがない場合は、<a href="#" id="registerLink">新規登録</a>
             </div>
         </div>
     </div>
@@ -9251,12 +9251,9 @@
             }
             
             // ログインボタンのイベントリスナー設定
-            const loginBtn = document.querySelector('.btn-login');
+            const loginBtn = document.getElementById('loginButton');
             if (loginBtn) {
                 console.log('[DEBUG] ログインボタンが見つかりました');
-                
-                // onclick 属性を削除して、addEventListener だけを使用
-                loginBtn.removeAttribute('onclick');
                 
                 loginBtn.addEventListener('click', function(e) {
                     console.log('[DEBUG] ログインボタンがクリックされました');
@@ -9268,6 +9265,23 @@
                 console.log('[DEBUG] ログインボタンのイベントリスナー設定完了');
             } else {
                 console.error('[ERROR] ログインボタンが見つかりません');
+            }
+            
+            // 新規登録リンクのイベントリスナー設定
+            const registerLink = document.getElementById('registerLink');
+            if (registerLink) {
+                console.log('[DEBUG] 新規登録リンクが見つかりました');
+                
+                registerLink.addEventListener('click', function(e) {
+                    console.log('[DEBUG] 新規登録リンクがクリックされました');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showRegister();
+                });
+                
+                console.log('[DEBUG] 新規登録リンクのイベントリスナー設定完了');
+            } else {
+                console.error('[ERROR] 新規登録リンクが見つかりません');
             }
             
             // Enterキーでログイン
