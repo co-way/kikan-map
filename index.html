@@ -9876,9 +9876,10 @@
             
             contactPersons.push(personName);
             
-            await db.collection('locations').doc(locationId).update({
+            // ドキュメントが存在しない場合は作成、存在する場合は更新
+            await db.collection('locations').doc(locationId).set({
                 contactPersons: contactPersons
-            });
+            }, { merge: true });
             
             input.value = '';
             alert('担当者を追加しました');
@@ -9894,9 +9895,10 @@
             const loc = allLocations.find(l => l.id === locationId);
             const contactPersons = (loc.contactPersons || []).filter(p => p !== personName);
             
-            await db.collection('locations').doc(locationId).update({
+            // ドキュメントが存在しない場合は作成、存在する場合は更新
+            await db.collection('locations').doc(locationId).set({
                 contactPersons: contactPersons
-            });
+            }, { merge: true });
             
             alert('担当者を削除しました');
             
