@@ -9491,18 +9491,48 @@
         
         // 機関先データを読み込み
         async function loadLocations() {
-            const snapshot = await db.collection('locations').get();
-            allLocations = [];
-            snapshot.forEach((doc) => {
-                allLocations.push({
-                    id: doc.id,
-                    ...doc.data()
+            console.log('[DEBUG] loadLocations() 開始');
+            
+            // 1. INITIAL_DATA（HTML埋め込みの918件）を読み込み
+            allLocations = INITIAL_DATA.map(loc => ({...loc}));
+            console.log('[DEBUG] INITIAL_DATA読み込み:', allLocations.length + '件');
+            
+            // 2. Firestore から追加データ（担当者・訪問記録）を読み込み
+            try {
+                const snapshot = await db.collection('locations').get();
+                console.log('[DEBUG] Firestore から読み込み:', snapshot.size + '件');
+                
+                // 3. INITIAL_DATA と Firestore データをマージ
+                snapshot.forEach(doc => {
+                    const firestoreData = doc.data();
+                    const locationId = doc.id;
+                    
+                    // 既存の機関先を探す
+                    const existingIndex = allLocations.findIndex(loc => loc.id === locationId);
+                    
+                    if (existingIndex >= 0) {
+                        // 既存機関先に担当者データをマージ
+                        allLocations[existingIndex] = {
+                            ...allLocations[existingIndex],
+                            contactPersons: firestoreData.contactPersons || [],
+                        };
+                        console.log('[DEBUG] マージ:', locationId, '担当者:', firestoreData.contactPersons);
+                    } else {
+                        // 新規機関先（Firestore のみに存在）
+                        allLocations.push({
+                            id: locationId,
+                            ...firestoreData
+                        });
+                        console.log('[DEBUG] 新規追加:', locationId);
+                    }
                 });
-            });
-            console.log(`${allLocations.length}件の機関先を読み込みました`);
+            } catch (error) {
+                console.error('[ERROR] Firestore 読み込みエラー:', error);
+            }
+            
+            console.log('[DEBUG] 最終機関先数:', allLocations.length + '件');
+            initMap();
         }
-        
-        // 地図を初期化
         function initMap() {
             map = L.map('map').setView([35.0116, 135.7681], 11);
             
