@@ -23291,12 +23291,8 @@
                         };
                         console.log('[DEBUG] マージ:', locationId, '担当者:', firestoreData.contactPersons);
                     } else {
-                        // 新規機関先（Firestore のみに存在）
-                        allLocations.push({
-                            id: locationId,
-                            ...firestoreData
-                        });
-                        console.log('[DEBUG] 新規追加:', locationId);
+                        // Firestore にのみ存在する場合はスキップ（重複防止）
+                        console.log('[DEBUG] スキップ（INITIAL_DATAに存在しないID）:', locationId);
                     }
                 });
             } catch (error) {
@@ -23477,23 +23473,43 @@
             
             currentLocationId = locationId;
             
+            // 訪問記録を Firestore から読み込み
+            const visitsSnapshot = await db.collection('locations').doc(locationId).collection('visits')
+                .orderBy('timestamp', 'desc')
+                .get();
+            
+            const visits = [];
+            visitsSnapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.timestamp) {
+                    visits.push({
+                        id: doc.id,
+                        date: data.timestamp.toDate(),
+                        staff: data.staff || '',
+                        contactPerson: data.contactPerson || '',
+                        memo: data.memo || '',
+                        timestamp: data.timestamp
+                    });
+                }
+            });
+            
             // 訪問統計を計算
             let stats = {
-                totalVisits: loc.visits ? loc.visits.length : 0,
+                totalVisits: visits.length,
                 lastVisit: null,
                 avgInterval: 0
             };
             
-            if (loc.visits && loc.visits.length > 0) {
-                stats.lastVisit = new Date(loc.visits[0].timestamp.seconds * 1000).toLocaleDateString('ja-JP');
+            if (visits.length > 0) {
+                stats.lastVisit = visits[0].date.toLocaleDateString('ja-JP');
                 
-                if (loc.visits.length > 1) {
+                if (visits.length > 1) {
                     let totalDays = 0;
-                    for (let i = 0; i < loc.visits.length - 1; i++) {
-                        const days = Math.floor((loc.visits[i].timestamp.seconds - loc.visits[i + 1].timestamp.seconds) / (60 * 60 * 24));
+                    for (let i = 0; i < visits.length - 1; i++) {
+                        const days = Math.floor((visits[i].date - visits[i + 1].date) / (1000 * 60 * 60 * 24));
                         totalDays += days;
                     }
-                    stats.avgInterval = Math.round(totalDays / (loc.visits.length - 1));
+                    stats.avgInterval = Math.round(totalDays / (visits.length - 1));
                 }
             }
             
@@ -23582,18 +23598,22 @@
                     </div>
                 </div>
 
-                ${loc.visits && loc.visits.length > 0 ? `
+                ${visits.length > 0 ? `
                 <div class="detail-section">
                     <h3>📅 訪問履歴</h3>
-                    ${loc.visits.map(visit => `
+                    ${visits.map(visit => `
                         <div class="visit-stat" style="margin-bottom:10px;">
                             <div class="visit-stat-item">
                                 <span class="visit-stat-label">訪問日時:</span>
-                                <span class="visit-stat-value">${new Date(visit.timestamp.seconds * 1000).toLocaleString('ja-JP')}</span>
+                                <span class="visit-stat-value">${visit.date.toLocaleString('ja-JP')}</span>
                             </div>
                             <div class="visit-stat-item">
                                 <span class="visit-stat-label">担当者:</span>
-                                <span class="visit-stat-value">${visit.staff || currentUser.email}</span>
+                                <span class="visit-stat-value">${visit.staff}</span>
+                            </div>
+                            <div class="visit-stat-item">
+                                <span class="visit-stat-label">面談者:</span>
+                                <span class="visit-stat-value">${visit.contactPerson}</span>
                             </div>
                             ${visit.memo ? `
                             <div style="margin-top:8px;padding-top:8px;border-top:1px solid #e9ecef;">
