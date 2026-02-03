@@ -9751,16 +9751,7 @@
 
                 <div class="detail-section">
                     <h3>👥 登録担当者</h3>
-                    <div id="contactPersonsList" style="margin-bottom:15px;">
-                        ${loc.contactPersons && loc.contactPersons.length > 0 ? 
-                            loc.contactPersons.map(person => \`
-                                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:#f8f9fa;border-radius:4px;margin-bottom:5px;">
-                                    <span>👤 ${person}</span>
-                                    <button onclick="removeContactPerson('${locationId}', '${person}')" style="padding:4px 8px;background:#dc3545;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;">削除</button>
-                                </div>
-                            \`).join('') 
-                            : '<div style="color:#999;font-size:13px;">登録担当者なし</div>'}
-                    </div>
+                    <div id="contactPersonsList" style="margin-bottom:15px;"></div>
                     <div style="display:flex;gap:8px;">
                         <input type="text" id="newContactPersonInput" placeholder="担当者名を入力" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
                         <button onclick="addContactPerson('${locationId}')" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">追加</button>
@@ -9818,6 +9809,37 @@
             
             document.getElementById('detailTitle').textContent = loc.name;
             document.getElementById('detailContent').innerHTML = detailHTML;
+            // 担当者リストを動的に生成（シンタックスエラー回避）
+            const contactPersonsList = document.getElementById('contactPersonsList');
+            if (contactPersonsList) {
+                contactPersonsList.innerHTML = '';
+                if (loc.contactPersons && loc.contactPersons.length > 0) {
+                    loc.contactPersons.forEach(function(person) {
+                        const div = document.createElement('div');
+                        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px;background:#f8f9fa;border-radius:4px;margin-bottom:5px;';
+                        
+                        const span = document.createElement('span');
+                        span.textContent = '👤 ' + person;
+                        
+                        const button = document.createElement('button');
+                        button.textContent = '削除';
+                        button.style.cssText = 'padding:4px 8px;background:#dc3545;color:white;border:none;border-radius:3px;cursor:pointer;font-size:12px;';
+                        button.addEventListener('click', function() {
+                            removeContactPerson(locationId, person);
+                        });
+                        
+                        div.appendChild(span);
+                        div.appendChild(button);
+                        contactPersonsList.appendChild(div);
+                    });
+                } else {
+                    const p = document.createElement('div');
+                    p.style.cssText = 'color:#999;font-size:13px;';
+                    p.textContent = '登録担当者なし';
+                    contactPersonsList.appendChild(p);
+                }
+            }
+            
             document.getElementById('detailModal').style.display = 'block';
         }
         
