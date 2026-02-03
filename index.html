@@ -9754,7 +9754,7 @@
                     <div id="contactPersonsList" style="margin-bottom:15px;"></div>
                     <div style="display:flex;gap:8px;">
                         <input type="text" id="newContactPersonInput" placeholder="担当者名を入力" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
-                        <button onclick="addContactPerson('${locationId}')" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">追加</button>
+                        <button id="addContactPersonBtn" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;">追加</button>
                     </div>
                 </div>
 
@@ -9841,6 +9841,18 @@
             }
             
             document.getElementById('detailModal').style.display = 'block';
+            
+            // 追加ボタンのイベントリスナーを設定
+            const addBtn = document.getElementById('addContactPersonBtn');
+            if (addBtn) {
+                addBtn.onclick = function() {
+                    console.log('[DEBUG] 追加ボタンがクリックされました, locationId:', locationId);
+                    addContactPerson(locationId);
+                };
+                console.log('[DEBUG] 追加ボタンのイベントリスナー設定完了');
+            } else {
+                console.error('[ERROR] 追加ボタンが見つかりません');
+            }
         }
         
 
