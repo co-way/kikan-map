@@ -23501,15 +23501,21 @@
             };
             
             if (visits.length > 0) {
-                stats.lastVisit = visits[0].date.toLocaleDateString('ja-JP');
+                stats.lastVisit = visits[0].date.toLocaleDateString('ja-JP', {
+                    timeZone: 'Asia/Tokyo',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
                 
                 if (visits.length > 1) {
                     let totalDays = 0;
                     for (let i = 0; i < visits.length - 1; i++) {
-                        const days = Math.floor((visits[i].date - visits[i + 1].date) / (1000 * 60 * 60 * 24));
+                        const days = Math.abs(Math.floor((visits[i].date - visits[i + 1].date) / (1000 * 60 * 60 * 24)));
                         totalDays += days;
                     }
                     stats.avgInterval = Math.round(totalDays / (visits.length - 1));
+                    console.log('[DEBUG] 平均訪問間隔:', stats.avgInterval, '日');
                 }
             }
             
@@ -23605,7 +23611,14 @@
                         <div class="visit-stat" style="margin-bottom:10px;">
                             <div class="visit-stat-item">
                                 <span class="visit-stat-label">訪問日時:</span>
-                                <span class="visit-stat-value">${visit.date.toLocaleString('ja-JP')}</span>
+                                <span class="visit-stat-value">${visit.date.toLocaleString('ja-JP', {
+                                    timeZone: 'Asia/Tokyo',
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}</span>
                             </div>
                             <div class="visit-stat-item">
                                 <span class="visit-stat-label">担当者:</span>
@@ -23799,7 +23812,7 @@
         
         // 訪問履歴を読み込み
         async function loadVisitHistory(locationId) {
-            const snapshot = await db.collection('locations').doc(locationId).collection('visits').orderBy('date', 'desc').get();
+            const snapshot = await db.collection('locations').doc(locationId).collection('visits').orderBy('timestamp', 'desc').get();
             const historyDiv = document.getElementById('visitHistory');
             
             if (snapshot.empty) {
@@ -23810,8 +23823,15 @@
             historyDiv.innerHTML = '<h3 style="margin-top: 20px; margin-bottom: 10px;">訪問履歴</h3>';
             snapshot.forEach((doc) => {
                 const visit = doc.data();
-                const date = visit.date.toDate();
-                const dateStr = date.toLocaleString('ja-JP');
+                const date = visit.timestamp.toDate();
+                const dateStr = date.toLocaleString('ja-JP', { 
+                    timeZone: 'Asia/Tokyo',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
                 
                 const div = document.createElement('div');
                 div.className = 'visit-item';
