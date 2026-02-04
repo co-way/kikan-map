@@ -727,6 +727,7 @@
                 <div class="filter-group">
                     <label>⚙️ データ管理</label>
                     <button class="btn-small" onclick="exportLocations()" style="width: 100%; margin-bottom: 8px;">① 機関先一覧をエクスポート</button>
+                    <button class="btn-small" onclick="showVisitReportModal()" style="width: 100%; margin-bottom: 8px; background: #28a745;">📊 訪問履歴レポートを表示</button>
                     <button class="btn-small" onclick="exportVisitReport()" style="width: 100%; margin-bottom: 8px;">② 訪問履歴レポートをエクスポート</button>
                     <button class="btn-small" onclick="showAddLocation()" style="width: 100%; background: #27ae60;">機関先を追加</button>
                 </div>
@@ -24002,7 +24003,9 @@
                             hour: '2-digit',
                             minute: '2-digit'
                         }),
-                        '訪問結果': v.memo || ''
+                        '訪問者名': v.staff || '',
+                        '面談者名': v.contactPerson || '',
+                        'メモ': v.memo || ''
                     });
                 });
             }
@@ -24015,7 +24018,7 @@
             });
             
             // CSVに変換（BOM付き）
-            const headers = ['機関先名', '機関先種別', '訪問日時', '訪問結果'];
+            const headers = ['機関先名', '機関先種別', '訪問日時', '訪問者名', '面談者名', 'メモ'];
             const csv = [
                 '\ufeff' + headers.join(','),
                 ...data.map(row => headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(','))
@@ -24160,6 +24163,321 @@
         }
 
 
+
+        // 訪問履歴レポートを表示
+        let reportData = [];
+        let sortColumn = 2; // デフォルトは訪問日時
+        let sortAsc = false; // 降順
+        let periodFilterStart = null;
+        let periodFilterEnd = null;
+        
+        async function showVisitReportModal() {
+            document.getElementById('visitReportModal').style.display = 'block';
+            
+            // 初期表示は今月
+            const select = document.getElementById('periodFilter');
+            select.value = 'thisMonth';
+            applyPeriodFilter();
+            
+            await loadVisitReport();
+        }
+        
+
+        // 期間フィルター適用
+        function applyPeriodFilter() {
+            const select = document.getElementById('periodFilter');
+            const customInputs = document.getElementById('customPeriodInputs');
+            const period = select.value;
+            
+            if (period === 'custom') {
+                customInputs.style.display = 'flex';
+                return;
+            } else {
+                customInputs.style.display = 'none';
+            }
+            
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            switch(period) {
+                case 'all':
+                    periodFilterStart = null;
+                    periodFilterEnd = null;
+                    break;
+                    
+                case 'today':
+                    periodFilterStart = today.getTime();
+                    periodFilterEnd = now.getTime();
+                    break;
+                    
+                case 'thisWeek':
+                    const dayOfWeek = now.getDay();
+                    const monday = new Date(today);
+                    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+                    periodFilterStart = monday.getTime();
+                    periodFilterEnd = now.getTime();
+                    break;
+                    
+                case 'thisMonth':
+                    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                    periodFilterStart = firstDayOfMonth.getTime();
+                    periodFilterEnd = now.getTime();
+                    break;
+                    
+                case 'lastMonth':
+                    const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+                    periodFilterStart = firstDayOfLastMonth.getTime();
+                    periodFilterEnd = lastDayOfLastMonth.getTime();
+                    break;
+                    
+                case 'last3Months':
+                    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+                    periodFilterStart = threeMonthsAgo.getTime();
+                    periodFilterEnd = now.getTime();
+                    break;
+                    
+                case 'last6Months':
+                    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+                    periodFilterStart = sixMonthsAgo.getTime();
+                    periodFilterEnd = now.getTime();
+                    break;
+                    
+                case 'thisYear':
+                    const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
+                    periodFilterStart = firstDayOfYear.getTime();
+                    periodFilterEnd = now.getTime();
+                    break;
+            }
+            
+            renderReportTable();
+        }
+        
+        // カスタム期間適用
+        function applyCustomPeriod() {
+            const startInput = document.getElementById('periodStart');
+            const endInput = document.getElementById('periodEnd');
+            
+            if (!startInput.value && !endInput.value) {
+                alert('開始日または終了日を指定してください');
+                return;
+            }
+            
+            if (startInput.value) {
+                const startDate = new Date(startInput.value);
+                periodFilterStart = startDate.getTime();
+            } else {
+                periodFilterStart = null;
+            }
+            
+            if (endInput.value) {
+                const endDate = new Date(endInput.value);
+                endDate.setHours(23, 59, 59, 999);
+                periodFilterEnd = endDate.getTime();
+            } else {
+                periodFilterEnd = null;
+            }
+            
+            renderReportTable();
+        }
+
+        async function loadVisitReport() {
+            const tbody = document.getElementById('visitReportTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center;">読み込み中...</td></tr>';
+            
+            reportData = [];
+            
+            // 全機関先の訪問履歴を取得
+            for (const loc of allLocations) {
+                const visitsSnapshot = await db.collection('locations').doc(loc.id).collection('visits')
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                
+                visitsSnapshot.forEach((doc) => {
+                    const v = doc.data();
+                    const date = v.timestamp.toDate();
+                    
+                    reportData.push({
+                        機関先名: loc.name,
+                        機関先種別: loc.type,
+                        訪問日時: date.toLocaleString('ja-JP', {
+                            timeZone: 'Asia/Tokyo',
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }),
+                        訪問者名: v.staff || '',
+                        面談者名: v.contactPerson || '',
+                        メモ: v.memo || '',
+                        timestamp: date.getTime()
+                    });
+                });
+            }
+            
+            renderReportTable();
+        }
+        
+        function renderReportTable() {
+            const tbody = document.getElementById('visitReportTableBody');
+            const searchBox = document.getElementById('reportSearchBox');
+            const searchTerm = searchBox ? searchBox.value.toLowerCase() : '';
+            
+            // 期間フィルター
+            let filtered = reportData;
+            if (periodFilterStart || periodFilterEnd) {
+                filtered = filtered.filter(row => {
+                    const rowTime = row.timestamp;
+                    if (periodFilterStart && rowTime < periodFilterStart) return false;
+                    if (periodFilterEnd && rowTime > periodFilterEnd) return false;
+                    return true;
+                });
+            }
+            
+            // 検索フィルター
+            if (searchTerm) {
+                filtered = filtered.filter(row => 
+                    Object.values(row).some(val => 
+                        String(val).toLowerCase().includes(searchTerm)
+                    )
+                );
+            }
+            
+            // ソート
+            filtered.sort((a, b) => {
+                const cols = ['機関先名', '機関先種別', '訪問日時', '訪問者名', '面談者名'];
+                const col = cols[sortColumn] || '訪問日時';
+                
+                let valA = col === '訪問日時' ? a.timestamp : a[col];
+                let valB = col === '訪問日時' ? b.timestamp : b[col];
+                
+                if (valA < valB) return sortAsc ? -1 : 1;
+                if (valA > valB) return sortAsc ? 1 : -1;
+                return 0;
+            });
+            
+            // テーブル描画
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #999;">該当する訪問記録がありません</td></tr>';
+            } else {
+                tbody.innerHTML = filtered.map((row, idx) => `
+                    <tr style="border-bottom: 1px solid #eee; ${idx % 2 === 0 ? 'background: #f9f9f9;' : ''}">
+                        <td style="padding: 10px;">${row.機関先名}</td>
+                        <td style="padding: 10px;">${row.機関先種別}</td>
+                        <td style="padding: 10px; white-space: nowrap;">${row.訪問日時}</td>
+                        <td style="padding: 10px;">${row.訪問者名}</td>
+                        <td style="padding: 10px;">${row.面談者名}</td>
+                        <td style="padding: 10px; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${row.メモ}</td>
+                    </tr>
+                `).join('');
+            }
+            
+            // 統計表示
+            const stats = document.getElementById('visitReportStats');
+            stats.innerHTML = `総訪問数: <strong>${filtered.length}</strong>件 / 機関先数: <strong>${new Set(filtered.map(r => r.機関先名)).size}</strong>件`;
+        }
+        
+        function sortReportTable(col) {
+            if (sortColumn === col) {
+                sortAsc = !sortAsc;
+            } else {
+                sortColumn = col;
+                sortAsc = true;
+            }
+            renderReportTable();
+        }
+        
+        function exportVisitReportFromModal() {
+            const searchBox = document.getElementById('reportSearchBox');
+            const searchTerm = searchBox ? searchBox.value.toLowerCase() : '';
+            
+            // 現在表示されているデータをエクスポート
+            let filtered = reportData;
+            if (searchTerm) {
+                filtered = reportData.filter(row => 
+                    Object.values(row).some(val => 
+                        String(val).toLowerCase().includes(searchTerm)
+                    )
+                );
+            }
+            
+            const headers = ['機関先名', '機関先種別', '訪問日時', '訪問者名', '面談者名', 'メモ'];
+            const csv = [
+                '\ufeff' + headers.join(','),
+                ...filtered.map(row => headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `訪問履歴レポート_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+            
+            alert(`訪問履歴レポートをエクスポートしました！\n総訪問数: ${filtered.length}件`);
+        }
+        
+        // 検索ボックスのイベントリスナー
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchBox = document.getElementById('reportSearchBox');
+            if (searchBox) {
+                searchBox.addEventListener('input', renderReportTable);
+            }
+        });
+
     </script>
+
+    <!-- 訪問履歴レポートモーダル -->
+    <div id="visitReportModal" class="modal">
+        <div class="modal-content" style="max-width: 95%; width: 1200px; max-height: 90vh; overflow: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">📊 訪問履歴レポート</h2>
+                <button onclick="closeModal('visitReportModal')" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">✕ 閉じる</button>
+            </div>
+            
+            <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <select id="periodFilter" onchange="applyPeriodFilter()" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+                    <option value="all">📅 全期間</option>
+                    <option value="today">今日</option>
+                    <option value="thisWeek">今週</option>
+                    <option value="thisMonth" selected>今月</option>
+                    <option value="lastMonth">先月</option>
+                    <option value="last3Months">過去3ヶ月</option>
+                    <option value="last6Months">過去6ヶ月</option>
+                    <option value="thisYear">今年</option>
+                    <option value="custom">カスタム期間...</option>
+                </select>
+                <div id="customPeriodInputs" style="display: none; gap: 5px; align-items: center;">
+                    <input type="date" id="periodStart" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <span>〜</span>
+                    <input type="date" id="periodEnd" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <button onclick="applyCustomPeriod()" style="background: #17a2b8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">適用</button>
+                </div>
+                <input type="text" id="reportSearchBox" placeholder="🔍 検索..." style="flex: 1; min-width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                <button onclick="exportVisitReportFromModal()" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">📥 CSVエクスポート</button>
+            </div>
+            
+            <div style="overflow-x: auto;">
+                <table id="visitReportTable" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="background: #f8f9fa; position: sticky; top: 0;">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; cursor: pointer;" onclick="sortReportTable(0)">機関先名 ▼</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; cursor: pointer;" onclick="sortReportTable(1)">機関先種別 ▼</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; cursor: pointer;" onclick="sortReportTable(2)">訪問日時 ▼</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; cursor: pointer;" onclick="sortReportTable(3)">訪問者名 ▼</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; cursor: pointer;" onclick="sortReportTable(4)">面談者名 ▼</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">メモ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="visitReportTableBody">
+                        <tr><td colspan="6" style="padding: 20px; text-align: center;">読み込み中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="visitReportStats" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px; font-size: 13px;"></div>
+        </div>
+    </div>
+
 </body>
 </html>
