@@ -726,7 +726,8 @@
                 <!-- データ管理 -->
                 <div class="filter-group">
                     <label>⚙️ データ管理</label>
-                    <button class="btn-small" onclick="exportData()" style="width: 100%; margin-bottom: 8px;">データをエクスポート</button>
+                    <button class="btn-small" onclick="exportLocations()" style="width: 100%; margin-bottom: 8px;">① 機関先一覧をエクスポート</button>
+                    <button class="btn-small" onclick="exportVisitReport()" style="width: 100%; margin-bottom: 8px;">② 訪問履歴レポートをエクスポート</button>
                     <button class="btn-small" onclick="showAddLocation()" style="width: 100%; background: #27ae60;">機関先を追加</button>
                 </div>
             </div>
@@ -23937,70 +23938,103 @@
             applyFilters();
         }
         
-        // データをエクスポート（訪問履歴を含む強化版）
-        async function exportData() {
-            const data = [];
-            
-            // 進捗表示
-            const originalText = event.target.textContent;
-            event.target.textContent = 'エクスポート中...';
-            event.target.disabled = true;
-            
-            for (const loc of allLocations) {
-                // 訪問履歴を全件取得
-                const visitsSnapshot = await db.collection('locations').doc(loc.id).collection('visits').orderBy('date', 'desc').get();
-                
-                if (visitsSnapshot.empty) {
-                    // 訪問履歴がない場合も1行出力
-                    data.push({
-                        機関先名: loc.name,
-                        住所: loc.address,
-                        市区: loc.city,
-                        種別: loc.type,
-                        緯度: loc.lat,
-                        経度: loc.lng,
-                        訪問日時: '',
-                        担当者: '',
-                        訪問メモ: ''
-                    });
-                } else {
-                    // 訪問履歴がある場合は各訪問を1行ずつ出力
-                    visitsSnapshot.forEach((doc) => {
-                        const v = doc.data();
-                        data.push({
-                            機関先名: loc.name,
-                            住所: loc.address,
-                            市区: loc.city,
-                            種別: loc.type,
-                            緯度: loc.lat,
-                            経度: loc.lng,
-                            訪問日時: v.date.toDate().toLocaleString('ja-JP'),
-                            担当者: v.staff,
-                            訪問メモ: v.memo || ''
-                        });
-                    });
-                }
-            }
+        // ① 機関先一覧をエクスポート
+        function exportLocations() {
+            const data = allLocations.map(loc => ({
+                機関先名: loc.name,
+                住所: loc.address,
+                市区: loc.city,
+                種別: loc.type,
+                緯度: loc.lat,
+                経度: loc.lng,
+                電話番号: loc.phone || '',
+                FAX: loc.fax || '',
+                登録担当者: (loc.contactPersons || []).join('、'),
+                営業時間: loc.businessHours || '',
+                備考: loc.notes || ''
+            }));
             
             // CSVに変換
             const headers = Object.keys(data[0]);
             const csv = [
-                headers.join(','),
-                ...data.map(row => headers.map(h => `"${row[h] || ''}"`).join(','))
+                '\ufeff' + headers.join(','), // BOM付き
+                ...data.map(row => headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(','))
             ].join('\n');
             
             // ダウンロード
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `機関先データ_訪問履歴含む_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.download = `機関先一覧_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+            
+            alert(`機関先一覧をエクスポートしました！\n総数: ${data.length}件`);
+        }
+        
+        // ② 訪問履歴レポートをエクスポート
+        async function exportVisitReport() {
+            const data = [];
+            
+            // 進捗表示
+            if (event && event.target) {
+                event.target.textContent = 'エクスポート中...';
+                event.target.disabled = true;
+            }
+            
+            // 全機関先の訪問履歴を取得
+            for (const loc of allLocations) {
+                const visitsSnapshot = await db.collection('locations').doc(loc.id).collection('visits')
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                
+                visitsSnapshot.forEach((doc) => {
+                    const v = doc.data();
+                    const date = v.timestamp.toDate();
+                    
+                    data.push({
+                        機関先名: loc.name,
+                        '機関先種別': loc.type,
+                        '訪問日時': date.toLocaleString('ja-JP', {
+                            timeZone: 'Asia/Tokyo',
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }),
+                        '訪問結果': v.memo || ''
+                    });
+                });
+            }
+            
+            // 訪問日時でソート（新しい順）
+            data.sort((a, b) => {
+                const dateA = new Date(a['訪問日時'].replace(/\//g, '-'));
+                const dateB = new Date(b['訪問日時'].replace(/\//g, '-'));
+                return dateB - dateA;
+            });
+            
+            // CSVに変換（BOM付き）
+            const headers = ['機関先名', '機関先種別', '訪問日時', '訪問結果'];
+            const csv = [
+                '\ufeff' + headers.join(','),
+                ...data.map(row => headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+            
+            // ダウンロード
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `訪問履歴レポート_${new Date().toISOString().slice(0, 10)}.csv`;
             link.click();
             
             // ボタンを元に戻す
-            event.target.textContent = originalText;
-            event.target.disabled = false;
+            if (event && event.target) {
+                event.target.textContent = '② 訪問履歴レポートをエクスポート';
+                event.target.disabled = false;
+            }
             
-            alert(`エクスポート完了！\n総データ数: ${data.length}行`);
+            alert(`訪問履歴レポートをエクスポートしました！\n総訪問数: ${data.length}件`);
         }
         
         // モーダルを閉じる
