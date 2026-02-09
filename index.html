@@ -366,7 +366,7 @@
         }
         
         .btn-secondary {
-            background: #95a5a6;
+            background: #000000;
             color: white;
         }
         
@@ -595,8 +595,8 @@
             
             #sidebar {
                 width: 100%;
-                height: 60vh;
-                max-height: 60vh;
+                height: 65vh;
+                max-height: 65vh;
                 border-right: none;
                 border-bottom: 2px solid #ddd;
                 overflow-y: auto;
@@ -604,7 +604,7 @@
             
             #mapArea {
                 width: 100%;
-                height: 40vh;
+                height: 35vh;
             }
             
             /* サイドバー内のセクション調整 */
@@ -664,6 +664,10 @@
                 <input type="password" id="loginPassword" placeholder="パスワード">
             </div>
             <button class="btn-login" id="loginButton">ログイン</button>
+        <button type="button" onclick="showSignupForm()" style="width: 100%; padding: 10px; margin-top: 8px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">新規登録</button>
+        <div style="text-align: center; margin-top: 12px;">
+          <a href="javascript:void(0)" onclick="showPasswordResetForm()" style="color: #4285f4; text-decoration: none; font-size: 14px;">パスワードを忘れた方</a>
+        </div>
             <div class="error-message" id="loginError"></div>
             <div class="register-link">
                 アカウントがない場合は、<a href="#" id="registerLink">新規登録</a>
@@ -715,10 +719,10 @@
                     <label>📅 訪問状況</label>
                     <select id="visitStatusFilter">
                         <option value="all">すべて表示</option>
-                        <option value="within15">🟢 直近15日以内に訪問</option>
-                        <option value="within30">🔵 直近30日以内に訪問</option>
-                        <option value="within60">🟠 直近60日以内に訪問</option>
-                        <option value="over60">⚫ 60日以上前に訪問</option>
+                        <option value="within15">① 15日以内</option>
+                        <option value="16to30">② 16〜30日</option>
+                        <option value="31to60">③ 31〜60日</option>
+                        <option value="over60">④ 61日以上</option>
                         <option value="never">⚪ 未訪問</option>
                     </select>
                 </div>
@@ -729,7 +733,7 @@
                     <button class="btn-small" onclick="exportLocations()" style="width: 100%; margin-bottom: 8px;">① 機関先一覧をエクスポート</button>
                     <button class="btn-small" onclick="showVisitReportModal()" style="width: 100%; margin-bottom: 8px; background: #28a745;">📊 訪問履歴レポートを表示</button>
                     <button class="btn-small" onclick="exportVisitReport()" style="width: 100%; margin-bottom: 8px;">② 訪問履歴レポートをエクスポート</button>
-                    <button class="btn-small" onclick="showAddLocation()" style="width: 100%; background: #27ae60;">機関先を追加</button>
+                    <button class="btn-small" onclick="showAddLocation()" style="width: 100%; background: #00ff00;">機関先を追加</button>
                 </div>
             </div>
             
@@ -747,20 +751,20 @@
             <div class="legend">
                 <h4>訪問状況</h4>
                 <div class="legend-item">
-                    <div class="legend-color" style="background: #27ae60;"></div>
-                    <span>直近15日以内</span>
+                    <div class="legend-color" style="background: #00ff00;"></div>
+                    <span>① 15日以内</span>
                 </div>
                 <div class="legend-item">
-                    <div class="legend-color" style="background: #3498db;"></div>
-                    <span>直近30日以内</span>
+                    <div class="legend-color" style="background: #0000ff;"></div>
+                    <span>② 16〜30日</span>
                 </div>
                 <div class="legend-item">
-                    <div class="legend-color" style="background: #f39c12;"></div>
-                    <span>直近60日以内</span>
+                    <div class="legend-color" style="background: #ff9900;"></div>
+                    <span>③ 31〜60日</span>
                 </div>
                 <div class="legend-item">
-                    <div class="legend-color" style="background: #95a5a6;"></div>
-                    <span>60日以上前</span>
+                    <div class="legend-color" style="background: #000000;"></div>
+                    <span>④ 61日以上</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" style="background: #9b59b6;"></div>
@@ -23381,8 +23385,8 @@
                 
                 const daysDiff = Math.floor((now - loc.lastVisitDate) / (1000 * 60 * 60 * 24));
                 if (visitStatus === 'within15' && daysDiff <= 15) return true;
-                if (visitStatus === 'within30' && daysDiff <= 30) return true;
-                if (visitStatus === 'within60' && daysDiff <= 60) return true;
+                if (visitStatus === '16to30' && daysDiff >= 16 && daysDiff <= 30) return true;
+                if (visitStatus === '31to60' && daysDiff >= 31 && daysDiff <= 60) return true;
                 if (visitStatus === 'over60' && daysDiff > 60) return true;
                 return false;
             });
@@ -23405,10 +23409,10 @@
                 let color = '#9b59b6';
                 if (loc.lastVisitDate) {
                     const daysDiff = Math.floor((new Date() - loc.lastVisitDate) / (1000 * 60 * 60 * 24));
-                    if (daysDiff <= 15) color = '#27ae60';
-                    else if (daysDiff <= 30) color = '#3498db';
-                    else if (daysDiff <= 60) color = '#f39c12';
-                    else color = '#95a5a6';
+                    if (daysDiff <= 15) color = '#00ff00'; // 緑: ①15日以内
+                    else if (daysDiff >= 16 && daysDiff <= 30) color = '#0000ff'; // 青: ②16〜30日
+                    else if (daysDiff >= 31 && daysDiff <= 60) color = '#ff9900'; // オレンジ: ③31〜60日
+                    else color = '#000000'; // 黒: ④61日以上
                 }
                 
                 const marker = L.circleMarker([loc.lat, loc.lng], {
@@ -24427,6 +24431,191 @@
 
     </script>
 
+    // ========================================
+    // 新規登録機能
+    // ========================================
+    
+    function showSignupForm() {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('signupScreen').style.display = 'block';
+    }
+    
+    function showLoginForm() {
+      document.getElementById('signupScreen').style.display = 'none';
+      document.getElementById('passwordResetScreen').style.display = 'none';
+      document.getElementById('loginScreen').style.display = 'flex';
+    }
+    
+    function showPasswordResetForm() {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('passwordResetScreen').style.display = 'block';
+    }
+    
+    async function submitSignup() {
+      // エラーメッセージをクリア
+      document.getElementById('emailError').style.display = 'none';
+      document.getElementById('passwordError').style.display = 'none';
+      document.getElementById('passwordConfirmError').style.display = 'none';
+      
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
+      
+      let hasError = false;
+      
+      // メールアドレスの検証
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email) {
+        document.getElementById('emailError').textContent = 'メールアドレスを入力してください';
+        document.getElementById('emailError').style.display = 'block';
+        hasError = true;
+      } else if (!emailPattern.test(email)) {
+        document.getElementById('emailError').textContent = '有効なメールアドレスを入力してください';
+        document.getElementById('emailError').style.display = 'block';
+        hasError = true;
+      }
+      
+      // パスワードの検証
+      if (!password) {
+        document.getElementById('passwordError').textContent = 'パスワードを入力してください';
+        document.getElementById('passwordError').style.display = 'block';
+        hasError = true;
+      } else if (password.length < 6) {
+        document.getElementById('passwordError').textContent = 'パスワードは6文字以上で入力してください';
+        document.getElementById('passwordError').style.display = 'block';
+        hasError = true;
+      }
+      
+      // パスワード確認の検証
+      if (!passwordConfirm) {
+        document.getElementById('passwordConfirmError').textContent = '確認用パスワードを入力してください';
+        document.getElementById('passwordConfirmError').style.display = 'block';
+        hasError = true;
+      } else if (password !== passwordConfirm) {
+        document.getElementById('passwordConfirmError').textContent = 'パスワードが一致しません';
+        document.getElementById('passwordConfirmError').style.display = 'block';
+        hasError = true;
+      }
+      
+      if (hasError) return;
+      
+      // ボタンを無効化
+      const btn = document.getElementById('signupSubmitButton');
+      btn.disabled = true;
+      btn.textContent = '登録中...';
+      
+      try {
+        // Firebase Authentication で新規登録
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        console.log('[DEBUG] 新規登録成功:', userCredential.user.email);
+        
+        alert('登録が完了しました！');
+        
+        // ログイン画面に自動的に遷移（すでにログイン済みなのでメイン画面が表示される）
+        showLoginForm();
+        
+      } catch (error) {
+        console.error('[ERROR] 新規登録エラー:', error);
+        
+        let errorMessage = '登録に失敗しました';
+        if (error.code === 'auth/email-already-in-use') {
+          errorMessage = 'このメールアドレスは既に登録されています';
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage = '無効なメールアドレスです';
+        } else if (error.code === 'auth/weak-password') {
+          errorMessage = 'パスワードが弱すぎます（6文字以上を推奨）';
+        }
+        
+        document.getElementById('emailError').textContent = errorMessage;
+        document.getElementById('emailError').style.display = 'block';
+        
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '登録する';
+      }
+    }
+    
+    // ========================================
+    // パスワードリセット機能
+    // ========================================
+    
+    async function submitPasswordReset() {
+      document.getElementById('resetEmailError').style.display = 'none';
+      
+      const email = document.getElementById('resetEmail').value.trim();
+      
+      // メールアドレスの検証
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email) {
+        document.getElementById('resetEmailError').textContent = 'メールアドレスを入力してください';
+        document.getElementById('resetEmailError').style.display = 'block';
+        return;
+      } else if (!emailPattern.test(email)) {
+        document.getElementById('resetEmailError').textContent = '有効なメールアドレスを入力してください';
+        document.getElementById('resetEmailError').style.display = 'block';
+        return;
+      }
+      
+      // ボタンを無効化
+      const btn = document.getElementById('resetSubmitButton');
+      btn.disabled = true;
+      btn.textContent = '送信中...';
+      
+      try {
+        // Firebase Authentication でパスワードリセットメール送信
+        await firebase.auth().sendPasswordResetEmail(email);
+        console.log('[DEBUG] パスワードリセットメール送信:', email);
+        
+        alert('パスワードリセット用のメールを ' + email + ' に送信しました。\nメールに記載されたリンクからパスワードを再設定してください。');
+        
+        // ログイン画面に戻る
+        showLoginForm();
+        
+      } catch (error) {
+        console.error('[ERROR] パスワードリセットエラー:', error);
+        
+        let errorMessage = 'メール送信に失敗しました';
+        if (error.code === 'auth/user-not-found') {
+          errorMessage = 'このメールアドレスは登録されていません';
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage = '無効なメールアドレスです';
+        }
+        
+        document.getElementById('resetEmailError').textContent = errorMessage;
+        document.getElementById('resetEmailError').style.display = 'block';
+        
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'リセットメールを送信';
+      }
+    }
+    
+    // リアルタイム入力検証（オプション）
+    (function() {
+      const signupEmail = document.getElementById('signupEmail');
+      const signupPassword = document.getElementById('signupPassword');
+      const signupPasswordConfirm = document.getElementById('signupPasswordConfirm');
+      
+      if (signupEmail) {
+        signupEmail.addEventListener('input', function() {
+          document.getElementById('emailError').style.display = 'none';
+        });
+      }
+      
+      if (signupPassword) {
+        signupPassword.addEventListener('input', function() {
+          document.getElementById('passwordError').style.display = 'none';
+        });
+      }
+      
+      if (signupPasswordConfirm) {
+        signupPasswordConfirm.addEventListener('input', function() {
+          document.getElementById('passwordConfirmError').style.display = 'none';
+        });
+      }
+    })();
+
+
     <!-- 訪問履歴レポートモーダル -->
     <div id="visitReportModal" class="modal">
         <div class="modal-content" style="max-width: 95%; width: 1200px; max-height: 90vh; overflow: auto;">
@@ -24479,5 +24668,112 @@
         </div>
     </div>
 
+
+    <!-- 新規登録画面 -->
+    <div id="signupScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 10000; overflow-y: auto;">
+      <div style="width: 90%; max-width: 400px; margin: 60px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+        <h2 style="text-align: center; color: #333; margin-bottom: 24px;">新規登録</h2>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 6px; color: #555; font-weight: bold;">メールアドレス</label>
+          <input type="email" id="signupEmail" placeholder="example@email.com" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+          <div id="emailError" style="color: #dc3545; font-size: 12px; margin-top: 4px; display: none;"></div>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 6px; color: #555; font-weight: bold;">パスワード（6文字以上）</label>
+          <input type="password" id="signupPassword" placeholder="••••••••" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+          <div id="passwordError" style="color: #dc3545; font-size: 12px; margin-top: 4px; display: none;"></div>
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 6px; color: #555; font-weight: bold;">パスワード（確認）</label>
+          <input type="password" id="signupPasswordConfirm" placeholder="••••••••" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+          <div id="passwordConfirmError" style="color: #dc3545; font-size: 12px; margin-top: 4px; display: none;"></div>
+        </div>
+        
+        <button type="button" id="signupSubmitButton" onclick="submitSignup()" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px;">登録する</button>
+        
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="javascript:void(0)" onclick="showLoginForm()" style="color: #4285f4; text-decoration: none; font-size: 14px;">ログイン画面に戻る</a>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- パスワードリセット画面 -->
+    <div id="passwordResetScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 10000; overflow-y: auto;">
+      <div style="width: 90%; max-width: 400px; margin: 60px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+        <h2 style="text-align: center; color: #333; margin-bottom: 24px;">パスワードリセット</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 24px; font-size: 14px;">登録したメールアドレスにパスワードリセット用のリンクを送信します。</p>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 6px; color: #555; font-weight: bold;">メールアドレス</label>
+          <input type="email" id="resetEmail" placeholder="example@email.com" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+          <div id="resetEmailError" style="color: #dc3545; font-size: 12px; margin-top: 4px; display: none;"></div>
+        </div>
+        
+        <button type="button" id="resetSubmitButton" onclick="submitPasswordReset()" style="width: 100%; padding: 12px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px;">リセットメールを送信</button>
+        
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="javascript:void(0)" onclick="showLoginForm()" style="color: #4285f4; text-decoration: none; font-size: 14px;">ログイン画面に戻る</a>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 新規登録画面 -->
+    <div id="signupScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 10000; overflow-y: auto;">
+      <div style="width: 90%; max-width: 400px; margin: 60px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+        <h2 style="text-align: center; color: #333; margin-bottom: 24px;">新規登録</h2>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 6px; color: #555; font-weight: bold;">メールアドレス</label>
+          <input type="email" id="signupEmail" placeholder="example@email.com" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+          <div id="emailError" style="color: #dc3545; font-size: 12px; margin-top: 4px; display: none;"></div>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 6px; color: #555; font-weight: bold;">パスワード（6文字以上）</label>
+          <input type="password" id="signupPassword" placeholder="••••••••" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+          <div id="passwordError" style="color: #dc3545; font-size: 12px; margin-top: 4px; display: none;"></div>
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 6px; color: #555; font-weight: bold;">パスワード（確認）</label>
+          <input type="password" id="signupPasswordConfirm" placeholder="••••••••" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+          <div id="passwordConfirmError" style="color: #dc3545; font-size: 12px; margin-top: 4px; display: none;"></div>
+        </div>
+        
+        <button type="button" id="signupSubmitButton" onclick="submitSignup()" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px;">登録する</button>
+        
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="javascript:void(0)" onclick="showLoginForm()" style="color: #4285f4; text-decoration: none; font-size: 14px;">ログイン画面に戻る</a>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- パスワードリセット画面 -->
+    <div id="passwordResetScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 10000; overflow-y: auto;">
+      <div style="width: 90%; max-width: 400px; margin: 60px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+        <h2 style="text-align: center; color: #333; margin-bottom: 24px;">パスワードリセット</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 24px; font-size: 14px;">登録したメールアドレスにパスワードリセット用のリンクを送信します。</p>
+        
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; margin-bottom: 6px; color: #555; font-weight: bold;">メールアドレス</label>
+          <input type="email" id="resetEmail" placeholder="example@email.com" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+          <div id="resetEmailError" style="color: #dc3545; font-size: 12px; margin-top: 4px; display: none;"></div>
+        </div>
+        
+        <button type="button" id="resetSubmitButton" onclick="submitPasswordReset()" style="width: 100%; padding: 12px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px;">リセットメールを送信</button>
+        
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="javascript:void(0)" onclick="showLoginForm()" style="color: #4285f4; text-decoration: none; font-size: 14px;">ログイン画面に戻る</a>
+        </div>
+      </div>
+    </div>
+
 </body>
 </html>
+       
