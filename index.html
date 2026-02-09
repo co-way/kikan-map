@@ -14743,6 +14743,7 @@
         let map;
         let markersLayer;
         let allLocations = [];
+        let allLocationsOriginal = []; // フィルター前の全機関先
         let filteredLocations = []; // フィルター後のデータ
         let currentUser = null;
         let currentLocationId = null;
@@ -23306,6 +23307,11 @@
             }
             
             console.log('[DEBUG] 最終機関先数:', allLocations.length + '件');
+            
+            // フィルター前の全機関先を保存
+            allLocationsOriginal = [...allLocations];
+            console.log('[DEBUG] allLocationsOriginal に保存:', allLocationsOriginal.length + '件');
+            
             initMap();
         }
         function initMap() {
@@ -23986,8 +23992,8 @@
                 event.target.disabled = true;
             }
             
-            // 全機関先の訪問履歴を取得
-            for (const loc of allLocations) {
+            // 全機関先の訪問履歴を取得（フィルター前の全機関先）
+            for (const loc of allLocationsOriginal) {
                 const visitsSnapshot = await db.collection('locations').doc(loc.id).collection('visits')
                     .orderBy('timestamp', 'desc')
                     .get();
@@ -24207,6 +24213,38 @@
                 case 'all':
                     periodFilterStart = null;
                     periodFilterEnd = null;
+                    break;
+                    
+                case 'within15':
+                    const fifteenDaysAgo = new Date(now);
+                    fifteenDaysAgo.setDate(now.getDate() - 15);
+                    periodFilterStart = fifteenDaysAgo.getTime();
+                    periodFilterEnd = now.getTime();
+                    break;
+                    
+                case 'within16_30':
+                    const thirtyDaysAgo = new Date(now);
+                    thirtyDaysAgo.setDate(now.getDate() - 30);
+                    const sixteenDaysAgo = new Date(now);
+                    sixteenDaysAgo.setDate(now.getDate() - 16);
+                    periodFilterStart = thirtyDaysAgo.getTime();
+                    periodFilterEnd = sixteenDaysAgo.getTime();
+                    break;
+                    
+                case 'within31_60':
+                    const sixtyDaysAgo = new Date(now);
+                    sixtyDaysAgo.setDate(now.getDate() - 60);
+                    const thirtyOneDaysAgo = new Date(now);
+                    thirtyOneDaysAgo.setDate(now.getDate() - 31);
+                    periodFilterStart = sixtyDaysAgo.getTime();
+                    periodFilterEnd = thirtyOneDaysAgo.getTime();
+                    break;
+                    
+                case 'over60':
+                    const sixtyOneDaysAgo = new Date(now);
+                    sixtyOneDaysAgo.setDate(now.getDate() - 61);
+                    periodFilterStart = 0;
+                    periodFilterEnd = sixtyOneDaysAgo.getTime();
                     break;
                     
                 case 'today':
@@ -24627,6 +24665,10 @@
             <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                 <select id="periodFilter" onchange="applyPeriodFilter()" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
                     <option value="all">📅 全期間</option>
+                    <option value="within15">① 15日以内</option>
+                    <option value="within16_30">② 16〜30日以内</option>
+                    <option value="within31_60">③ 31〜60日以内</option>
+                    <option value="over60">④ 61日以上</option>
                     <option value="today">今日</option>
                     <option value="thisWeek">今週</option>
                     <option value="thisMonth" selected>今月</option>
