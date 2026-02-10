@@ -23374,10 +23374,11 @@
             });
             
             const filteredWithVisits = await Promise.all(filtered.map(async (loc) => {
-                const visitsSnapshot = await db.collection('locations').doc(loc.id).collection('visits').orderBy('date', 'desc').limit(1).get();
+                const visitsSnapshot = await db.collection('locations').doc(loc.id).collection('visits').orderBy('timestamp', 'desc').limit(1).get();
                 let lastVisitDate = null;
                 if (!visitsSnapshot.empty) {
-                    lastVisitDate = visitsSnapshot.docs[0].data().date.toDate();
+                    const visitData = visitsSnapshot.docs[0].data();
+                    lastVisitDate = visitData.timestamp ? visitData.timestamp.toDate() : null;
                 }
                 return { ...loc, lastVisitDate };
             }));
