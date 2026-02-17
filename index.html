@@ -87,6 +87,8 @@
             border-radius: 6px;
             font-size: 16px;
             cursor: pointer;
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+            touch-action: manipulation;
             transition: background 0.3s;
         }
         
@@ -23125,23 +23127,7 @@
                 console.error('[ERROR] Firebase Auth が初期化されていません');
             }
             
-            // ログインボタンのイベントリスナー設定
-            const loginBtn = document.getElementById('loginButton');
-            if (loginBtn) {
-                console.log('[DEBUG] ログインボタンが見つかりました');
-                
-                loginBtn.addEventListener('click', function(e) {
-                    console.log('[DEBUG] ログインボタンがクリックされました');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    login();
-                });
-                
-                console.log('[DEBUG] ログインボタンのイベントリスナー設定完了');
-            } else {
-                console.error('[ERROR] ログインボタンが見つかりません');
-            }
-            
+
             // 新規登録リンクのイベントリスナー設定
             const registerLink = document.getElementById('registerLink');
             if (registerLink) {
@@ -23183,11 +23169,22 @@
             if (loginBtn) {
                 console.log('[DEBUG] ✅ ログインボタンが見つかりました');
                 
-                loginBtn.addEventListener('click', function(e) {
-                    console.log('[DEBUG] 🖱️ ログインボタンがクリックされました');
+                // クリック・タッチイベントの両方に対応
+                const handleLogin = function(e) {
+                    console.log('[DEBUG] 🖱️ ログインボタンがクリック/タッチされました');
                     e.preventDefault();
                     e.stopPropagation();
                     login();
+                };
+                
+                // clickイベント（PC・スマホ両対応）
+                loginBtn.addEventListener('click', handleLogin);
+                
+                // touchendイベント（スマホ対応強化）
+                loginBtn.addEventListener('touchend', function(e) {
+                    console.log('[DEBUG] 📱 タッチイベント発火');
+                    e.preventDefault();
+                    handleLogin(e);
                 });
                 
                 console.log('[DEBUG] ✅ ログインボタンのイベントリスナー設定完了');
