@@ -14833,6 +14833,8 @@
         let map;
         let markersLayer;
         let currentLocationMarker = null; // 現在地マーカー
+        let visitCache = {}; // 訪問記録のキャッシュ { locationId: { lastVisitDate, loaded: true } }
+        let isLoadingVisits = false; // 訪問記録読み込み中フラグ
         let allLocations = [];
         let allLocationsOriginal = []; // フィルター前の全機関先
         let filteredLocations = []; // フィルター後のデータ
@@ -23180,13 +23182,6 @@
                 // clickイベント（PC・スマホ両対応）
                 loginBtn.addEventListener('click', handleLogin);
                 
-                // touchendイベント（スマホ対応強化）
-                loginBtn.addEventListener('touchend', function(e) {
-                    console.log('[DEBUG] 📱 タッチイベント発火');
-                    e.preventDefault();
-                    handleLogin(e);
-                });
-                
                 console.log('[DEBUG] ✅ ログインボタンのイベントリスナー設定完了');
             } else {
                 console.error('[ERROR] ❌ ログインボタンが見つかりません');
@@ -23398,9 +23393,13 @@
             allLocationsOriginal = [...allLocations];
             console.log('[DEBUG] allLocationsOriginal に保存:', allLocationsOriginal.length + '件');
             
+            console.log('[PERF] データ読み込み完了。地図を表示します。');
+            
             initMap();
         }
         function initMap() {
+            console.log('[PERF] 地図初期化開始');
+            document.getElementById('resultCount').textContent = '読み込み中...';
             map = L.map('map').setView([35.0116, 135.7681], 11);
             
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -23565,14 +23564,45 @@ GPSやネットワーク接続を確認してください。';
                 return true;
             });
             
+            // 🚀 高速化: 訪問状況フィルターが「すべて表示」の場合は訪問記録を読み込まない
+            if (visitStatus === 'all') {
+                console.log('[PERF] 訪問記録の読み込みをスキップ（訪問状況フィルター: すべて表示）');
+                
+                // 訪問記録なしで表示
+                const filtered2 = filtered;
+                filteredLocations = filtered2;
+                
+                updateMap(filtered2);
+                updateLocationList(filtered2);
+                
+                document.getElementById('resultCount').textContent = `表示中: ${filtered2.length} 件`;
+                return;
+            }
+            
+            // 🚀 高速化: キャッシュから訪問記録を取得（Firestoreアクセスを最小化）
             const filteredWithVisits = await Promise.all(filtered.map(async (loc) => {
-                const visitsSnapshot = await db.collection('locations').doc(loc.id).collection('visits').orderBy('timestamp', 'desc').limit(1).get();
-                let lastVisitDate = null;
-                if (!visitsSnapshot.empty) {
-                    const visitData = visitsSnapshot.docs[0].data();
-                    lastVisitDate = visitData.timestamp ? visitData.timestamp.toDate() : null;
+                // キャッシュにある場合はキャッシュから取得
+                if (visitCache[loc.id] && visitCache[loc.id].loaded) {
+                    return { ...loc, lastVisitDate: visitCache[loc.id].lastVisitDate };
                 }
-                return { ...loc, lastVisitDate };
+                
+                // キャッシュにない場合はFirestoreから取得
+                try {
+                    const visitsSnapshot = await db.collection('locations').doc(loc.id).collection('visits').orderBy('timestamp', 'desc').limit(1).get();
+                    let lastVisitDate = null;
+                    if (!visitsSnapshot.empty) {
+                        const visitData = visitsSnapshot.docs[0].data();
+                        lastVisitDate = visitData.timestamp ? visitData.timestamp.toDate() : null;
+                    }
+                    
+                    // キャッシュに保存
+                    visitCache[loc.id] = { lastVisitDate, loaded: true };
+                    
+                    return { ...loc, lastVisitDate };
+                } catch (error) {
+                    console.error('[ERROR] 訪問記録取得エラー:', loc.id, error);
+                    return { ...loc, lastVisitDate: null };
+                }
             }));
             
             const now = new Date();
@@ -25126,4 +25156,4 @@ GPSやネットワーク接続を確認してください。';
 
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
