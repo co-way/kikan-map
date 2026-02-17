@@ -647,7 +647,79 @@
             }
         }
 
-    </style>
+    
+        /* 現在地ボタン */
+        .gps-button {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: white;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            z-index: 1000;
+            transition: all 0.3s;
+        }
+        
+        .gps-button:hover {
+            background: #f0f0f0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        
+        .gps-button:active {
+            background: #e0e0e0;
+        }
+        
+        .gps-button.loading {
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+    
+        /* 現在地ボタン */
+        .location-button {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            padding: 10px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            font-size: 20px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .location-button:hover {
+            background: #f4f4f4;
+        }
+        
+        .location-button:active {
+            background: #e0e0e0;
+        }
+        
+        .location-button.loading {
+            opacity: 0.6;
+            cursor: wait;
+        }
+</style>
 </head>
 <body>
     <!-- ログイン画面 -->
@@ -746,6 +818,15 @@
         <!-- 地図エリア -->
         <div id="mapArea">
             <div id="map"></div>
+            <!-- 現在地ボタン -->
+            <button class="location-button" id="locationButton" onclick="goToCurrentLocation()" title="現在地を表示">
+                📍
+            </button>
+
+            <!-- 現在地ボタン -->
+            <button class="gps-button" id="gpsButton" onclick="goToCurrentLocation()" title="現在地を表示">
+                📍
+            </button>
             
             <!-- 凡例 -->
             <div class="legend">
@@ -810,6 +891,13 @@
                     <label>種別 *</label>
                     <select id="edit_type" required>
                         <option value="">選択してください</option>
+                        <option value="病院">病院</option>
+                        <option value="居宅介護支援事業所">居宅介護支援事業所</option>
+                        <option value="訪問介護ステーション">訪問介護ステーション</option>
+                        <option value="介護老人保健施設">介護老人保健施設</option>
+                        <option value="地域包括支援センター">地域包括支援センター</option>
+                        <option value="市役所・区役所">市役所・区役所</option>
+                        <option value="その他">その他</option>
                     </select>
                 </div>
                 <div class="form-field">
@@ -14742,6 +14830,7 @@
         // グローバル変数
         let map;
         let markersLayer;
+        let currentLocationMarker = null; // 現在地マーカー
         let allLocations = [];
         let allLocationsOriginal = []; // フィルター前の全機関先
         let filteredLocations = []; // フィルター後のデータ
@@ -23327,6 +23416,112 @@
             initFilters();  // フィルターを初期化
             applyFilters();
         }
+
+        // ========================================
+        // GPS機能: 現在地取得と表示
+        // ========================================
+        
+        let currentLocationMarker = null;
+        let currentLocationCircle = null;
+        
+        async function goToCurrentLocation() {
+            const button = document.getElementById('gpsButton');
+            
+            // 位置情報APIが利用可能か確認
+            if (!navigator.geolocation) {
+                alert('お使いのブラウザは位置情報に対応していません');
+                return;
+            }
+            
+            // ボタンをローディング状態に
+            button.classList.add('loading');
+            button.disabled = true;
+            
+            try {
+                // 現在地を取得
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                });
+                
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+                
+                console.log('[DEBUG] 現在地取得成功:', lat, lng, '精度:', accuracy + 'm');
+                
+                // 既存の現在地マーカーを削除
+                if (currentLocationMarker) {
+                    map.removeLayer(currentLocationMarker);
+                }
+                if (currentLocationCircle) {
+                    map.removeLayer(currentLocationCircle);
+                }
+                
+                // 精度範囲を円で表示
+                currentLocationCircle = L.circle([lat, lng], {
+                    radius: accuracy,
+                    color: '#4285f4',
+                    fillColor: '#4285f4',
+                    fillOpacity: 0.1,
+                    weight: 1
+                }).addTo(map);
+                
+                // 現在地マーカーを作成
+                currentLocationMarker = L.circleMarker([lat, lng], {
+                    radius: 10,
+                    fillColor: '#4285f4',
+                    color: 'white',
+                    weight: 3,
+                    opacity: 1,
+                    fillOpacity: 1
+                }).addTo(map);
+                
+                // ポップアップを追加
+                currentLocationMarker.bindPopup(`
+                    <div style="text-align: center;">
+                        <strong>📍 現在地</strong><br>
+                        <small>精度: 約${Math.round(accuracy)}m</small>
+                    </div>
+                `);
+                
+                // 地図を現在地に移動してズーム
+                map.setView([lat, lng], 15, {
+                    animate: true,
+                    duration: 1
+                });
+                
+                // 成功メッセージ
+                console.log('[DEBUG] 現在地を地図に表示しました');
+                
+            } catch (error) {
+                console.error('[ERROR] 現在地取得エラー:', error);
+                
+                let errorMessage = '現在地を取得できませんでした';
+                
+                if (error.code === 1) {
+                    errorMessage = '位置情報の利用が許可されていません。
+ブラウザの設定で位置情報を許可してください。';
+                } else if (error.code === 2) {
+                    errorMessage = '位置情報を取得できませんでした。
+GPSやネットワーク接続を確認してください。';
+                } else if (error.code === 3) {
+                    errorMessage = '位置情報の取得がタイムアウトしました。
+もう一度お試しください。';
+                }
+                
+                alert(errorMessage);
+                
+            } finally {
+                // ボタンをローディング状態から解除
+                button.classList.remove('loading');
+                button.disabled = false;
+            }
+        }
+
         
         // フィルターを初期化
         function initFilters() {
@@ -23652,6 +23847,7 @@
                 <div class="action-buttons">
                     <button class="btn-action btn-edit" onclick="openEditModal('${locationId}')">✏️ 編集</button>
                     <button class="btn-action btn-visit" onclick="closeDetailModal();openVisitModal('${locationId}')">📝 訪問記録</button>
+                    <button class="btn-action" style="background: #4285f4;" onclick="openRoute('${locationId}')">📍 ルート案内</button>
                     <button class="btn-action btn-delete" onclick="deleteLocation('${locationId}')">🗑️ 削除</button>
                     <button class="btn-action btn-cancel" onclick="closeDetailModal()">閉じる</button>
                 </div>
@@ -23773,14 +23969,6 @@
             currentLocationId = null;
         }
         
-        function openEditModal(locationId) {
-            alert('編集機能は次のバージョン（v4.3）で実装予定です');
-        }
-        
-        function deleteLocation(locationId) {
-            alert('削除機能は次のバージョン（v4.3）で実装予定です');
-        }
-
         async function openVisitModal(locationId) {
             currentLocationId = locationId;
             const loc = allLocations.find(l => l.id === locationId);
@@ -24131,10 +24319,11 @@
                 };
                 
                 try {
-                    await db.collection('locations').doc(currentLocationId).update(updates);
+                    await db.collection('locations').doc(currentLocationId).set(updates, { merge: true });
                     alert('✅ 更新しました');
                     closeEditModal();
-                    await loadAllData();
+                    await loadLocations();
+                    applyFilters();
                 } catch (error) {
                     alert('エラー: ' + error.message);
                 }
@@ -24157,7 +24346,8 @@
                 
                 alert('✅ 削除しました');
                 closeDetailModal();
-                await loadAllData();
+                await loadLocations();
+                applyFilters();
             } catch (error) {
                 alert('エラー: ' + error.message);
             }
@@ -24469,6 +24659,125 @@
         });
 
     </script>
+    <script>
+
+
+        // ========================================
+        // GPS機能
+        // ========================================
+        
+        // 現在地を取得して地図に表示
+        function goToCurrentLocation() {
+            const btn = document.getElementById('locationButton');
+            
+            if (!navigator.geolocation) {
+                alert('このブラウザは位置情報に対応していません');
+                return;
+            }
+            
+            // ローディング状態
+            btn.classList.add('loading');
+            btn.textContent = '⏳';
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    console.log('[DEBUG] 現在地取得成功:', lat, lng);
+                    
+                    // 現在地にズーム
+                    map.setView([lat, lng], 15);
+                    
+                    // 既存の現在地マーカーを削除
+                    if (currentLocationMarker) {
+                        map.removeLayer(currentLocationMarker);
+                    }
+                    
+                    // 現在地マーカーを追加
+                    currentLocationMarker = L.circleMarker([lat, lng], {
+                        radius: 10,
+                        fillColor: '#4285f4',
+                        color: '#ffffff',
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
+                    
+                    currentLocationMarker.bindPopup('<div style="text-align:center;"><strong>📍 現在地</strong></div>');
+                    currentLocationMarker.addTo(map);
+                    
+                    // ボタンを元に戻す
+                    btn.classList.remove('loading');
+                    btn.textContent = '📍';
+                },
+                (error) => {
+                    console.error('[ERROR] 位置情報取得エラー:', error);
+                    
+                    let errorMessage = '位置情報の取得に失敗しました';
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = '位置情報の使用が許可されていません
+
+ブラウザの設定で位置情報を許可してください';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = '位置情報が利用できません';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = '位置情報の取得がタイムアウトしました';
+                            break;
+                    }
+                    
+                    alert(errorMessage);
+                    
+                    // ボタンを元に戻す
+                    btn.classList.remove('loading');
+                    btn.textContent = '📍';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+        
+        // Google Maps でルート案内を開く
+        function openRoute(locationId) {
+            const loc = allLocationsOriginal.find(l => l.id === locationId);
+            if (!loc || !loc.lat || !loc.lng) {
+                alert('この機関先の位置情報がありません');
+                return;
+            }
+            
+            // 現在地を取得
+            if (!navigator.geolocation) {
+                // 現在地が取得できない場合は、目的地だけを開く
+                const url = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;
+                window.open(url, '_blank');
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    // Google Maps で経路を開く
+                    const url = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${loc.lat},${loc.lng}&travelmode=driving`;
+                    window.open(url, '_blank');
+                },
+                (error) => {
+                    console.error('[ERROR] 位置情報取得エラー:', error);
+                    
+                    // 現在地が取得できない場合は、目的地だけを開く
+                    const url = `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`;
+                    window.open(url, '_blank');
+                }
+            );
+        }
 
     // ========================================
     // 新規登録機能
@@ -24712,6 +25021,7 @@
     </div>
 
 
+    </script>
     <!-- 新規登録画面 -->
     <div id="signupScreen" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 10000; overflow-y: auto;">
       <div style="width: 90%; max-width: 400px; margin: 60px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
@@ -24819,4 +25129,4 @@
 
 </body>
 </html>
-       
+                                                                                                                                                                                                                                                                                                                    
