@@ -23158,6 +23158,22 @@
                     }
                 });
             }
+
+            // ログインボタンのイベントリスナー設定
+            const loginBtn = document.getElementById('loginButton');
+            if (loginBtn) {
+                console.log('[DEBUG] ログインボタンが見つかりました（DOMContentLoaded内）');
+                loginBtn.addEventListener('click', function(e) {
+                    console.log('[DEBUG] ログインボタンがクリックされました');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    login();
+                });
+                console.log('[DEBUG] ログインボタンのイベントリスナー設定完了');
+            } else {
+                console.error('[ERROR] ログインボタンが見つかりません（DOMContentLoaded内）');
+            }
+
         });
         
         // ログインボタンのイベントリスナーを即座に設定
