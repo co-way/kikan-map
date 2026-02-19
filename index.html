@@ -23332,57 +23332,8 @@ async function signup() {
         // ログインボタンのイベントリスナーを即座に設定
         console.log('[DEBUG] === ログインボタンのイベントリスナー設定開始 ===');
         
-        function setupLoginButton() {
-            const loginBtn = document.getElementById('loginButton');
-            const registerLink = document.getElementById('registerLink');
-            const passwordInput = document.getElementById('loginPassword');
-            
-            if (loginBtn) {
-                console.log('[DEBUG] ✅ ログインボタンが見つかりました');
-                
-                // クリック・タッチイベントの両方に対応
-                const handleLogin = function(e) {
-                    console.log('[DEBUG] 🖱️ ログインボタンがクリック/タッチされました');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    login();
-                };
-                
-                // clickイベント（PC・スマホ両対応）
-                loginBtn.addEventListener('click', handleLogin);
-                
-                console.log('[DEBUG] ✅ ログインボタンのイベントリスナー設定完了');
-            } else {
-                console.error('[ERROR] ❌ ログインボタンが見つかりません');
-            }
-            
-            if (registerLink) {
-                console.log('[DEBUG] ✅ 新規登録リンクが見つかりました');
-                
-                registerLink.addEventListener('click', function(e) {
-                    console.log('[DEBUG] 🖱️ 新規登録リンクがクリックされました');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    showRegister();
-                });
-                
-                console.log('[DEBUG] ✅ 新規登録リンクのイベントリスナー設定完了');
-            }
-            
-            if (passwordInput) {
-                passwordInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        console.log('[DEBUG] ⏎ Enter キーが押されました');
-                        e.preventDefault();
-                        login();
-                    }
-                });
-                console.log('[DEBUG] ✅ Enter キーログイン設定完了');
-            }
-        }
         
         // 即座に実行
-        setupLoginButton();
         
         // 念のため、100ms 後にも実行
         setTimeout(setupLoginButton, 100);
@@ -23402,71 +23353,6 @@ async function signup() {
         });
         
         // ログイン
-        async function login() {
-            console.log('[DEBUG] login() 関数が呼ばれました');
-            
-            const emailInput = document.getElementById('loginEmail');
-            const passwordInput = document.getElementById('loginPassword');
-            const errorDiv = document.getElementById('loginError');
-            
-            if (!emailInput || !passwordInput) {
-                console.error('[ERROR] 入力フィールドが見つかりません');
-                alert('エラー: 入力フィールドが見つかりません。ページを再読み込みしてください。');
-                return;
-            }
-            
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-            
-            console.log('[DEBUG] メール:', email);
-            console.log('[DEBUG] パスワード:', password ? '入力あり' : '入力なし');
-            
-            if (!email || !password) {
-                errorDiv.textContent = 'メールアドレスとパスワードを入力してください';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            if (!auth) {
-                console.error('[ERROR] Firebase Auth が初期化されていません');
-                alert('エラー: Firebase が初期化されていません。ページを再読み込みしてください。');
-                return;
-            }
-            
-            try {
-                console.log('[DEBUG] Firebase 認証開始...');
-                errorDiv.textContent = 'ログイン中...';
-                errorDiv.style.display = 'block';
-                errorDiv.style.color = '#667eea';
-                
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                console.log('[DEBUG] ログイン成功:', userCredential.user.email);
-                
-                errorDiv.style.display = 'none';
-            } catch (error) {
-                console.error('[ERROR] ログインエラー:', error);
-                console.error('[ERROR] エラーコード:', error.code);
-                console.error('[ERROR] エラーメッセージ:', error.message);
-                
-                let errorMessage = 'ログインに失敗しました。';
-                
-                if (error.code === 'auth/user-not-found') {
-                    errorMessage = 'このメールアドレスは登録されていません。';
-                } else if (error.code === 'auth/wrong-password') {
-                    errorMessage = 'パスワードが正しくありません。';
-                } else if (error.code === 'auth/invalid-email') {
-                    errorMessage = 'メールアドレスの形式が正しくありません。';
-                } else if (error.code === 'auth/network-request-failed') {
-                    errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
-                } else {
-                    errorMessage = 'ログインに失敗しました: ' + error.message;
-                }
-                
-                errorDiv.textContent = errorMessage;
-                errorDiv.style.display = 'block';
-                errorDiv.style.color = '#e74c3c';
-            }
-        }
         
         // 新規登録
         function showRegister() {
