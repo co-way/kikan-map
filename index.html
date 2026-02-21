@@ -23401,68 +23401,6 @@ async function signup() {
             }
         });
         
-        // ログイン
-            
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-            
-            console.log('[DEBUG] メール:', email);
-            console.log('[DEBUG] パスワード:', password ? '入力あり' : '入力なし');
-            
-            if (!email || !password) {
-                errorDiv.textContent = 'メールアドレスとパスワードを入力してください';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            if (!auth) {
-                console.error('[ERROR] Firebase Auth が初期化されていません');
-                alert('エラー: Firebase が初期化されていません。ページを再読み込みしてください。');
-                return;
-            }
-            
-            try {
-                console.log('[DEBUG] Firebase 認証開始...');
-                errorDiv.textContent = 'ログイン中...';
-                errorDiv.style.display = 'block';
-                errorDiv.style.color = '#667eea';
-                
-                const userCredential = await auth.signInWithEmailAndPassword(email, password);
-                console.log('[DEBUG] ログイン成功:', userCredential.user.email);
-                
-                errorDiv.style.display = 'none';
-            } catch (error) {
-                console.error('[ERROR] ログインエラー:', error);
-                console.error('[ERROR] エラーコード:', error.code);
-                console.error('[ERROR] エラーメッセージ:', error.message);
-                
-                let errorMessage = 'ログインに失敗しました。';
-                
-                if (error.code === 'auth/user-not-found') {
-                    errorMessage = 'このメールアドレスは登録されていません。';
-                } else if (error.code === 'auth/wrong-password') {
-                    errorMessage = 'パスワードが正しくありません。';
-                } else if (error.code === 'auth/invalid-email') {
-                    errorMessage = 'メールアドレスの形式が正しくありません。';
-                } else if (error.code === 'auth/network-request-failed') {
-                    errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
-                } else {
-                    errorMessage = 'ログインに失敗しました: ' + error.message;
-                }
-                
-                errorDiv.textContent = errorMessage;
-                errorDiv.style.display = 'block';
-                errorDiv.style.color = '#e74c3c';
-            }
-        }
-        
-        // 新規登録
-                .catch((error) => {
-                    alert('登録に失敗しました: ' + error.message);
-                });
-        }
-        
-        // ログアウト
         function logout() {
             auth.signOut();
         }
@@ -23644,14 +23582,11 @@ async function signup() {
                 let errorMessage = '現在地を取得できませんでした';
                 
                 if (error.code === 1) {
-                    errorMessage = '位置情報の利用が許可されていません。
-ブラウザの設定で位置情報を許可してください。';
+                    errorMessage = '位置情報の利用が許可されていません。\nブラウザの設定で位置情報を許可してください。';
                 } else if (error.code === 2) {
-                    errorMessage = '位置情報を取得できませんでした。
-GPSやネットワーク接続を確認してください。';
+                    errorMessage = '位置情報を取得できませんでした。\nGPSやネットワーク接続を確認してください。';
                 } else if (error.code === 3) {
-                    errorMessage = '位置情報の取得がタイムアウトしました。
-もう一度お試しください。';
+                    errorMessage = '位置情報の取得がタイムアウトしました。\nもう一度お試しください。';
                 }
                 
                 alert(errorMessage);
