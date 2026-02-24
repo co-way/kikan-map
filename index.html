@@ -24622,10 +24622,13 @@ async function signup() {
         }
 
         async function loadVisitReport() {
+            console.log('[DEBUG] loadVisitReport開始');
+            console.log('[DEBUG] allLocations数:', allLocations.length);
             const tbody = document.getElementById('visitReportTableBody');
             tbody.innerHTML = '<tr><td colspan="6" style="padding: 20px; text-align: center;">読み込み中...</td></tr>';
             
             reportData = [];
+            console.log('[DEBUG] 訪問履歴取得開始...');
             
             // 全機関先の訪問履歴を取得
             for (const loc of allLocations) {
@@ -24656,10 +24659,12 @@ async function signup() {
                 });
             }
             
+            console.log('[DEBUG] reportData数:', reportData.length);
             renderReportTable();
         }
         
         function renderReportTable() {
+            console.log('[DEBUG] renderReportTable開始, データ数:', reportData.length);
             const tbody = document.getElementById('visitReportTableBody');
             const searchBox = document.getElementById('reportSearchBox');
             const searchTerm = searchBox ? searchBox.value.toLowerCase() : '';
